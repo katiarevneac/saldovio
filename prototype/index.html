@@ -17,6 +17,33 @@
     </section>
 
     <section>
+      <h2>Add transaction</h2>
+      <form id="transaction-form">
+        <label>
+          Type
+          <select name="type" required>
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+          </select>
+        </label>
+        <label>
+          Amount (RON)
+          <input type="number" name="amount" step="0.01" required>
+        </label>
+        <label>
+          Date
+          <input type="date" name="occurredOn" required>
+        </label>
+        <label>
+          Category
+          <input type="text" name="category">
+        </label>
+        <button type="submit">Save</button>
+      </form>
+      <p id="form-error" role="alert"></p>
+    </section>
+
+    <section>
       <h2>Transactions</h2>
       <table>
         <thead>
