@@ -14,4 +14,14 @@ export class TransactionsService {
 
     return result.rows[0];
   }
+
+  async findAll() {
+    const result = await pool.query(
+      `SELECT id, account_id, type, amount, occurred_on, category
+       FROM transactions
+       ORDER BY occurred_on, id`,
+    );
+
+    return result.rows;
+  }
 }
