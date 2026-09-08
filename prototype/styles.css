@@ -43,3 +43,28 @@ td.income {
 td.expense {
   color: #b3261e;
 }
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 320px;
+}
+
+form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+}
+
+form button {
+  align-self: flex-start;
+  padding: 0.5rem 1.25rem;
+  cursor: pointer;
+}
+
+#form-error {
+  color: #b3261e;
+  font-size: 0.9rem;
+}
