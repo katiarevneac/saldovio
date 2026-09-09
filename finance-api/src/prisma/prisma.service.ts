@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import { PrismaClient } from '../../generated/prisma/client.js';
+import { PrismaClient } from '../generated/prisma/client.js';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 // DATABASE_URL is normally loaded once, at process start, by main.ts's
