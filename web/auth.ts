@@ -34,7 +34,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   callbacks: {
     jwt({ token, user }) {
-      if (user) token.id = user.id;
+      // Finance API's user id is a Postgres integer; the JWT `sub`
+      // claim (used later to sign the internal service-to-service
+      // token) must be a string per the JWT spec, so normalize here.
+      if (user) token.id = String(user.id);
       return token;
     },
     session({ session, token }) {
