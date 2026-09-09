@@ -22,3 +22,29 @@ export async function getTransactions(): Promise<Transaction[]> {
 
   return response.json();
 }
+
+export type CreateTransactionPayload = {
+  accountId: number;
+  type: "income" | "expense" | "transfer";
+  amount: number;
+  occurredOn: string;
+  category?: string;
+};
+
+export async function createTransaction(
+  payload: CreateTransactionPayload
+): Promise<void> {
+  const response = await fetch(`${FINANCE_API_URL}/transactions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    const message = Array.isArray(body?.message)
+      ? body.message.join(", ")
+      : body?.message;
+    throw new Error(message ?? `Finance API returned ${response.status}`);
+  }
+}

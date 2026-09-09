@@ -1,5 +1,6 @@
 import { getTransactions } from "@/lib/transactions";
 import { toBani, formatAmount } from "@/lib/money";
+import TransactionForm from "@/components/TransactionForm";
 import styles from "./page.module.css";
 
 export default async function DashboardPage() {
@@ -16,6 +17,11 @@ export default async function DashboardPage() {
         <section>
           <h2>Current balance</h2>
           <p className={styles.balance}>{formatAmount(totalBani)}</p>
+        </section>
+
+        <section>
+          <h2>Add transaction</h2>
+          <TransactionForm />
         </section>
 
         <section>
