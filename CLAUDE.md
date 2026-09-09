@@ -194,4 +194,8 @@ Test runner for Python: **pytest** (no real alternative considered — Python's 
 
 PR #13 merged (via `gh` CLI, the new workflow).
 
-**Next:** mark S3 Done in Jira, start S4 (dashboard displays the forecast, with graceful fallback if Analytics Service is unavailable).
+**S4 done — Sprint 6 complete, all 4 stories shipped.** `web/lib/analytics.ts` (`getForecast`, no internal-auth token — Analytics Service has no ownership concept), `baniToDecimalString()` added to `lib/money.ts` (inverse of `toBani`, needed to send the aggregate balance back out as a Decimal-compatible string). Dashboard's forecast fetch is wrapped in its own `try/catch`, isolated from the rest of the page's data — verified for real, not just by code inspection: killed the running Analytics Service process and reloaded the dashboard in the browser. Balance, accounts, and transactions all rendered correctly; the forecast section showed an explicit "Forecast unavailable" message instead of crashing the page or silently showing 0. Restarted the service, forecast returned correctly. This is the first story this sprint verified with a real fault-injection test rather than just the happy path. PR #14 merged.
+
+**Sprint 6 complete: S1–S4 all done.** Third architecture component (Analytics Service) built, integrated, and proven resilient to its own downtime — the standing "unavailable forecast must never render as zero" rule is no longer just written down, it's been tested.
+
+**Next:** mark S3+S4 Done in Jira, close Sprint 6, decide Sprint 7 scope.
