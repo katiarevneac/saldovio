@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  accounts     Account[]
+
+  @@map("users")
+}
+
+model Account {
+  id             Int             @id @default(autoincrement())
+  name           String
+  currentBalance Decimal         @map("current_balance") @db.Decimal(14, 2)
+  referenceDate  DateTime        @map("reference_date") @db.Date
+  userId         Int             @map("user_id")
+  user           User            @relation(fields: [userId], references: [id])
+  transactions   Transaction[]
+  recurringRules RecurringRule[]
+
+  @@map("accounts")
+}
+
+model Transaction {
+  id         Int      @id @default(autoincrement())
+  accountId  Int      @map("account_id")
+  account    Account  @relation(fields: [accountId], references: [id])
+  type       String
+  amount     Decimal  @db.Decimal(14, 2)
+  occurredOn DateTime @map("occurred_on") @db.Date
+  category   String?
+
+  @@map("transactions")
+}
+
+model RecurringRule {
+  id         Int     @id @default(autoincrement())
+  accountId  Int     @map("account_id")
+  account    Account @relation(fields: [accountId], references: [id])
+  type       String
+  amount     Decimal @db.Decimal(14, 2)
+  frequency  String  @default("monthly")
+  dayOfMonth Int     @map("day_of_month")
+  category   String?
+  active     Boolean @default(true)
+
+  @@map("recurring_rules")
+}
