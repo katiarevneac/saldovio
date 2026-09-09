@@ -1,8 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { pool } from '../database/pool.js';
+import { CreateAccountDto } from './dto/create-account.dto.js';
 
 @Injectable()
 export class AccountsService {
+  async create(dto: CreateAccountDto, userId: number) {
+    const result = await pool.query(
+      `INSERT INTO accounts (name, current_balance, reference_date, user_id)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, name, current_balance, reference_date`,
+      [dto.name, dto.currentBalance, dto.referenceDate, userId],
+    );
+
+    return result.rows[0];
+  }
+
   async findMine(userId: number) {
     // current_balance is defined as of reference_date, inclusive — a
     // transaction dated exactly on reference_date is already baked
