@@ -55,3 +55,29 @@ export async function createAccountAction(formData: FormData): Promise<void> {
 
   redirect("/");
 }
+
+export async function createRecurringRuleAction(formData: FormData): Promise<void> {
+  const headers = await getAuthorizedHeaders();
+
+  const response = await fetch(`${FINANCE_API_URL}/recurring-rules`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      accountId: Number(formData.get("accountId")),
+      type: formData.get("type"),
+      amount: Number(formData.get("amount")),
+      dayOfMonth: Number(formData.get("dayOfMonth")),
+      category: formData.get("category") || undefined,
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    const message = Array.isArray(body?.message)
+      ? body.message.join(", ")
+      : (body?.message ?? "Could not create recurring rule");
+    redirect(`/recurring-rules/new?error=${encodeURIComponent(message)}`);
+  }
+
+  redirect("/");
+}
