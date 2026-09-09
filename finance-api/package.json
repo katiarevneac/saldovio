@@ -33,8 +33,10 @@
     "class-validator": "^0.15.1",
     "dotenv": "^17.4.2",
     "jose": "^6.2.12",
+    "nestjs-zod": "^5.5.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@nestjs/cli": "^12.0.0",
