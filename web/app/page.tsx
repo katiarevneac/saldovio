@@ -1,16 +1,31 @@
 import { getTransactions } from "@/lib/transactions";
 import { toBani, formatAmount } from "@/lib/money";
 import TransactionForm from "@/components/TransactionForm";
+import { auth, signOut } from "@/auth";
 import styles from "./page.module.css";
 
 export default async function DashboardPage() {
+  const session = await auth();
   const transactions = await getTransactions();
   const totalBani = transactions.reduce((sum, t) => sum + toBani(t.amount), 0);
 
   return (
     <div className={styles.page}>
-      <header>
+      <header className={styles.header}>
         <h1>Saldovio</h1>
+        {session?.user ? (
+          <form
+            action={async () => {
+              "use server";
+              await signOut({ redirectTo: "/login" });
+            }}
+          >
+            <span className={styles.sessionEmail}>{session.user.email}</span>
+            <button type="submit">Log out</button>
+          </form>
+        ) : (
+          <a href="/login">Log in</a>
+        )}
       </header>
 
       <main>
