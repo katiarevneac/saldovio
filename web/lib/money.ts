@@ -16,3 +16,14 @@ export function formatAmount(bani: number): string {
     currency: "RON",
   }).format(bani / 100);
 }
+
+// Inverse of toBani — needed to send the aggregate balance (computed
+// as integer bani, to avoid float error while summing) back out as a
+// decimal string for Analytics Service's Decimal-typed request field.
+export function baniToDecimalString(bani: number): string {
+  const sign = bani < 0 ? "-" : "";
+  const absBani = Math.abs(bani);
+  const wholePart = Math.floor(absBani / 100);
+  const centsPart = absBani % 100;
+  return `${sign}${wholePart}.${String(centsPart).padStart(2, "0")}`;
+}
