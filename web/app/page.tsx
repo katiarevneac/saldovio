@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getTransactions } from "@/lib/transactions";
 import { getMyAccounts } from "@/lib/accounts";
+import { getMyRecurringRules } from "@/lib/recurring-rules";
 import { toBani, formatAmount } from "@/lib/money";
 import TransactionForm from "@/components/TransactionForm";
 import { auth, signOut } from "@/auth";
@@ -8,9 +9,10 @@ import styles from "./page.module.css";
 
 export default async function DashboardPage() {
   const session = await auth();
-  const [accounts, transactions] = await Promise.all([
+  const [accounts, transactions, recurringRules] = await Promise.all([
     getMyAccounts(),
     getTransactions(),
+    getMyRecurringRules(),
   ]);
   const totalBani = accounts.reduce(
     (sum, account) => sum + toBani(account.balance),
@@ -52,6 +54,22 @@ export default async function DashboardPage() {
             ))}
           </ul>
           <Link href="/accounts/new">Add account</Link>
+        </section>
+
+        <section>
+          <h2>Recurring rules</h2>
+          <ul className={styles.accountList}>
+            {recurringRules.map((rule) => (
+              <li key={rule.id}>
+                {rule.category ?? rule.type} — day {rule.day_of_month} —{" "}
+                {formatAmount(
+                  toBani(rule.amount) *
+                    (rule.type === "expense" ? -1 : 1)
+                )}
+              </li>
+            ))}
+          </ul>
+          <Link href="/recurring-rules/new">Add recurring rule</Link>
         </section>
 
         <section>
