@@ -1,6 +1,4 @@
-// Local dev only — becomes an env var once this ever deploys
-// somewhere other than localhost.
-const FINANCE_API_URL = "http://localhost:3000";
+import { FINANCE_API_URL } from "./config";
 
 export type Transaction = {
   id: number;
