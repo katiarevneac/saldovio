@@ -174,4 +174,14 @@ Sprint 4 closed. **Sprint 5 started** (1 week, 2026-09-09 → 2026-09-16): Epic 
 
 **Sprint 5 complete: S1+S2 both done**, well inside the 1-week window. Found (not touched, out of scope): an untracked `design_handoff_saldovio_dashboard/` directory appeared in the repo root during S2 — a design-tool export, not created by this session's work; flagged to the user rather than silently added to or ignored by git.
 
-**Next:** mark S1+S2 Done in Jira, close Sprint 5, decide Sprint 6 scope (roadmap stage 5 — Analytics Service + 30-day forecast — is next in sequence per brief §19, unless something else takes priority).
+Sprint 5 closed. **Sprint 6 started** (2 weeks, 2026-09-09 → 2026-09-23): Epic "30-day balance forecast — Analytics Service", roadmap stage 5. User chose one combined sprint over splitting schema-work from the Analytics Service itself (considered and explicitly declined the 2-sprint split this session recommended). Four stories: S1 (`RecurringRule` schema + Finance API CRUD), S2 (recurring-rule creation UI), S3 (Analytics Service, FastAPI, `/forecast`), S4 (dashboard forecast display with graceful fallback).
+
+**Data-flow decision (brainstormed with the user):** `web/` collects balance + recurring rules from Finance API and sends them to Analytics Service as input — Analytics Service does not call Finance API itself. Chosen over the alternative (Analytics Service calling Finance API directly) specifically to avoid spreading `INTERNAL_API_SECRET` to a third service and to keep Analytics Service a pure, dependency-free calculator matching the standing rule that its unavailability must never affect core transaction management.
+
+**Schema decision:** `recurring_rules.frequency` is `monthly`-only for now (CHECK-enforced) — weekly/daily deferred until a real need surfaces. Nonexistent-day handling (`day_of_month` 31 in a 30-day month) clamps to the month's last day — decided with the user, will be implemented in S3's forecast computation, not at the storage layer.
+
+**S1 done.** `db/migrations/0004_create_recurring_rules.sql` — table only stores the rule; no forecast logic lives here. `POST`/`GET /recurring-rules` mirror the transactions pattern exactly (ownership check on create, `JOIN accounts` scoping on read), reusing `InternalAuthGuard` unchanged. Verified via curl: create → 201, invalid `dayOfMonth` (32) → 400 from `ValidationPipe` before reaching application code, no token → 401.
+
+**Process change (2026-09-09):** user asked Claude to create and merge PRs directly via `gh` CLI going forward, instead of handing off title/description for her to action on GitHub. Installed `gh` via Homebrew, she ran `gh auth login` once. PR #11 (S1) was the first PR created and merged this way — same Why/What/How-verified description convention kept, just automated who clicks merge. Saved as a standing feedback memory outside this repo.
+
+**Next:** mark S1 Done in Jira, start S2 (recurring-rule creation UI in `web/`).
