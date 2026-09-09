@@ -7,6 +7,7 @@ export type Account = {
   name: string;
   current_balance: string;
   reference_date: string;
+  balance: string;
 };
 
 export async function getMyAccount(): Promise<Account> {
