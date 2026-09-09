@@ -5,9 +5,16 @@ import { TransactionsModule } from './transactions/transactions.module.js';
 import { UsersModule } from './users/users.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { AccountsModule } from './accounts/accounts.module.js';
+import { RecurringRulesModule } from './recurring-rules/recurring-rules.module.js';
 
 @Module({
-  imports: [TransactionsModule, UsersModule, AuthModule, AccountsModule],
+  imports: [
+    TransactionsModule,
+    UsersModule,
+    AuthModule,
+    AccountsModule,
+    RecurringRulesModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
