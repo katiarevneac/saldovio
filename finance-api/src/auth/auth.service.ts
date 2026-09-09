@@ -1,17 +1,15 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
-import { pool } from '../database/pool.js';
+import { PrismaService } from '../prisma/prisma.service.js';
 import { LoginDto } from './dto/login.dto.js';
 
 @Injectable()
 export class AuthService {
-  async login(dto: LoginDto) {
-    const result = await pool.query(
-      `SELECT id, email, password_hash FROM users WHERE email = $1`,
-      [dto.email],
-    );
+  constructor(private readonly prisma: PrismaService) {}
 
-    const user = result.rows[0];
+  async login(dto: LoginDto) {
+    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+
     // Same "invalid credentials" message whether the email doesn't exist
     // or the password is wrong — distinguishing the two would let an
     // attacker enumerate registered emails.
@@ -19,7 +17,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const passwordMatches = await bcrypt.compare(dto.password, user.password_hash);
+    const passwordMatches = await bcrypt.compare(dto.password, user.passwordHash);
     if (!passwordMatches) {
       throw new UnauthorizedException('Invalid credentials');
     }
