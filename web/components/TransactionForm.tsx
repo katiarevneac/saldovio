@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { createTransaction } from "@/lib/transactions";
+import { createTransactionAction } from "@/app/actions";
 import styles from "./TransactionForm.module.css";
 
 export default function TransactionForm() {
@@ -26,8 +26,7 @@ export default function TransactionForm() {
       type === "expense" ? -Math.abs(enteredAmount) : Math.abs(enteredAmount);
 
     try {
-      await createTransaction({
-        accountId: 1,
+      await createTransactionAction({
         type,
         amount: signedAmount,
         occurredOn,
