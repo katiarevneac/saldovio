@@ -36,6 +36,24 @@
   gap: 0.25rem;
 }
 
+.forecastMeta {
+  font-size: 0.875rem;
+  color: #555;
+  margin: 0.25rem 0;
+}
+
+.forecastAssumptions {
+  font-size: 0.8rem;
+  color: #777;
+  padding-left: 1.25rem;
+  margin: 0.5rem 0 0;
+}
+
+.error {
+  color: #b3261e;
+  font-size: 0.875rem;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;

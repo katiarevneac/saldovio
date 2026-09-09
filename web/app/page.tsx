@@ -2,7 +2,8 @@ import Link from "next/link";
 import { getTransactions } from "@/lib/transactions";
 import { getMyAccounts } from "@/lib/accounts";
 import { getMyRecurringRules } from "@/lib/recurring-rules";
-import { toBani, formatAmount } from "@/lib/money";
+import { getForecast, type Forecast } from "@/lib/analytics";
+import { toBani, baniToDecimalString, formatAmount } from "@/lib/money";
 import TransactionForm from "@/components/TransactionForm";
 import { auth, signOut } from "@/auth";
 import styles from "./page.module.css";
@@ -18,6 +19,18 @@ export default async function DashboardPage() {
     (sum, account) => sum + toBani(account.balance),
     0
   );
+
+  // Analytics Service is a separate, independently-deployable
+  // component — it going down must never affect the core dashboard,
+  // and an unavailable forecast must never silently render as zero
+  // (CLAUDE.md). Caught locally, not left to crash the whole page.
+  let forecast: Forecast | null = null;
+  let forecastError = false;
+  try {
+    forecast = await getForecast(baniToDecimalString(totalBani), recurringRules);
+  } catch {
+    forecastError = true;
+  }
 
   return (
     <div className={styles.page}>
@@ -70,6 +83,32 @@ export default async function DashboardPage() {
             ))}
           </ul>
           <Link href="/recurring-rules/new">Add recurring rule</Link>
+        </section>
+
+        <section>
+          <h2>30-day forecast</h2>
+          {forecast ? (
+            <>
+              <p className={styles.balance}>
+                {formatAmount(toBani(forecast.forecastBalance))}
+              </p>
+              <p className={styles.forecastMeta}>
+                As of {forecast.calculationDate}, through{" "}
+                {forecast.windowEndDate} (formula v{forecast.formulaVersion})
+              </p>
+              <ul className={styles.forecastAssumptions}>
+                {forecast.assumptions.map((assumption) => (
+                  <li key={assumption}>{assumption}</li>
+                ))}
+              </ul>
+            </>
+          ) : forecastError ? (
+            <p className={styles.error}>
+              Forecast unavailable right now — Analytics Service could not
+              be reached. Your balance and transactions above are
+              unaffected.
+            </p>
+          ) : null}
         </section>
 
         <section>
