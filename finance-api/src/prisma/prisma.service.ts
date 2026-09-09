@@ -14,9 +14,13 @@ import { PrismaPg } from '@prisma/adapter-pg';
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleDestroy {
   constructor() {
-    const adapter = new PrismaPg({
-      connectionString: process.env.DATABASE_URL as string,
-    });
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl) {
+      throw new Error(
+        "DATABASE_URL is not set — refusing to fall back to pg's implicit local connection defaults, which could silently connect to the wrong database.",
+      );
+    }
+    const adapter = new PrismaPg({ connectionString: databaseUrl });
     super({ adapter });
   }
 
