@@ -54,6 +54,14 @@ Saldovio (formerly named FinPilot during early planning): a personal finance Saa
 6. Indicators with a zero denominator or insufficient data return "unavailable/explained," never a fabricated value.
 7. Every simulation/forecast result shows its assumptions, relevant inputs, calculation date, and formula version.
 
+### Known limitation — backdated transactions (found 2026-09-09, Sprint 4 S2)
+
+`accounts.current_balance` is a fixed snapshot as of `reference_date` (inclusive). A transaction with `occurred_on <= reference_date`, added *after the fact*, is **not** reflected in the displayed balance — it's assumed already baked into the stored `current_balance`. This is by design (rule 4 above — no double-counting), not a bug, but it means there is currently no way to correctly log a transaction that predates an account's `reference_date`.
+
+Workaround once multi-account support exists (not yet built): a separate account (e.g. "Cash") can have its own earlier `reference_date`, since `reference_date` is per-account. Not a fix for the single-account case.
+
+Not yet surfaced in the UI — a user can currently add a backdated transaction with no warning that it won't affect the balance. Revisit if this causes real confusion (it did once, during Sprint 4 S2 testing).
+
 ### Definition — "sold estimat" (agreed 2026-09-08)
 
 ```
@@ -146,4 +154,12 @@ Verified via a curl negative-path suite: no token → 401, malformed token → 4
 
 Learning checks passed: user correctly reasoned that a stolen static shared-secret would allow permanent impersonation (no expiry, `X-User-Id` uncoupled from the secret), self-corrected after an initial answer that conflated the risk with browser-side credential storage (there is none — `server-only` prevents that by construction); also correctly reasoned that a stolen *valid* JWT is fully usable for its remaining ~30s window (not "safe by default"), with the real protection being the short, non-renewable exposure window rather than immunity.
 
-**Sprint 3 complete: S1–S4 all done.** Epic 3 goal met — Next.js migration, Auth.js login/signup, and real per-user ownership enforcement on Finance API, replacing the fully public dev-mode API from Sprint 2. **Next:** mark S4 Done in Jira, close Sprint 3, write its retro (same authorship note as Sprints 1–2 — flag it again for the user), decide Sprint 4 scope (roadmap stage 4 — correct dashboard — or stage 5 — Analytics Service + 30-day forecast — per brief §19).
+**Sprint 3 complete: S1–S4 all done.** Epic 3 goal met — Next.js migration, Auth.js login/signup, and real per-user ownership enforcement on Finance API, replacing the fully public dev-mode API from Sprint 2. Sprint 3 retro written (`docs/retro/sprint-3.md`), same authorship caveat, now the third sprint in a row with this pattern. Sprint 3 closed, **Sprint 4 started** (1 week, 2026-09-09 → 2026-09-16): Epic "Correct dashboard — accurate balance calculation" (roadmap stage 4). Root cause: `accounts.current_balance`/`reference_date` existed in the schema since Sprint 2 but the dashboard ignored them entirely, just summing all transaction history — a real instance of brief §11 rule 4 (double-counting risk). Two stories: S1 (Finance API computes correct balance), S2 (dashboard displays it).
+
+**S1 done, on branch + PR.** `AccountsService.findMine` now computes `balance = current_balance + SUM(transactions.amount WHERE occurred_on > reference_date)` server-side (Postgres `FILTER` clause), exposed on `GET /accounts/me`. Convention decided with the user: `reference_date` is inclusive in `current_balance` — only strictly-later transactions get added, avoiding double-counting a transaction dated exactly on it. Formula validated directly in `psql` against real data before writing TypeScript. PR #7 merged.
+
+**S2 done.** `web/app/page.tsx` now displays `account.balance` (from `GET /accounts/me`) instead of `reduce()`-ing the full transaction list client-side. **Process note:** this story was initially committed directly to `main` without a branch — the exact mistake Sprint 2's retro flagged and Sprint 3 had avoided throughout. Caught before the commit landed (uncommitted changes moved onto a proper branch via `git checkout -b` before committing), not after — an improvement on how Sprint 2's version of this mistake was caught, but the underlying habit (branch first, always) still needs reinforcing rather than assumed.
+
+**Real limitation surfaced during S2 testing** (see the new "Known limitation — backdated transactions" note under Financial correctness rules above): backdating a transaction to before `reference_date` silently has no effect on the displayed balance. Confirmed as correct-per-design (not a bug) with the user, documented rather than silently left implicit. This also surfaced a genuine backlog item: **multi-account support** (e.g. a separate "Cash" account with its own `reference_date`) is not built — schema already supports multiple accounts per user, but there's no `POST /accounts` endpoint, no account-creation UI, and no account-selection in the transaction form. Not in Sprint 4 scope; noted for a future sprint.
+
+**Next:** open S2's PR, merge, mark S1+S2 Done in Jira, close Sprint 4.
