@@ -52,6 +52,36 @@ describe('fromDateOnlyString', () => {
     expect(() => fromDateOnlyString('not-a-date')).toThrow(/expected a "YYYY-MM-DD" string/);
     expect(() => fromDateOnlyString('2026-9-10')).toThrow(/expected a "YYYY-MM-DD" string/);
   });
+
+  // Regression test: the DTO-level @IsDateString() -> @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  // swap (done to fix the full-ISO-timestamp bug above) reopened a narrower
+  // gap — @Matches only checks format, not calendar validity, so an
+  // out-of-range value like this used to sail through DTO validation and
+  // reach here. Confirmed empirically: `new Date("2026-13-45T00:00:00.000Z")`
+  // is already Invalid Date in JS, so the Number.isNaN branch alone catches
+  // this one.
+  it('throws on a month that does not exist', () => {
+    expect(() => fromDateOnlyString('2026-13-45')).toThrow(
+      /calendrically invalid date: 2026-13-45/,
+    );
+  });
+
+  // Unlike the month-13 case, `new Date("2026-02-30T00:00:00.000Z")` does
+  // NOT produce Invalid Date — it silently rolls over to 2026-03-02.
+  // Number.isNaN can't see that; only the component-comparison catches it.
+  it('throws on a day that does not exist in that month, instead of silently rolling over', () => {
+    expect(() => fromDateOnlyString('2026-02-30')).toThrow(
+      /calendrically invalid date: 2026-02-30/,
+    );
+  });
+
+  it('still accepts the last real day of a non-leap February', () => {
+    expect(toDateOnlyString(fromDateOnlyString('2026-02-28'))).toBe('2026-02-28');
+  });
+
+  it('still accepts a leap day', () => {
+    expect(toDateOnlyString(fromDateOnlyString('2024-02-29'))).toBe('2024-02-29');
+  });
 });
 
 describe('todayDateOnly', () => {

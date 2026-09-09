@@ -37,10 +37,32 @@ export function toDateOnlyString(value: Date): string {
 // ValidationPipe catches this before it ever reaches here — this throw
 // is the defense-in-depth backstop, not the primary guard.
 export function fromDateOnlyString(value: string): Date {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) {
     throw new Error(`fromDateOnlyString expected a "YYYY-MM-DD" string, got: ${value}`);
   }
-  return new Date(`${value}T00:00:00.000Z`);
+  const [, yearStr, monthStr, dayStr] = match;
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+  const date = new Date(`${value}T00:00:00.000Z`);
+  // A regex-shaped but calendrically invalid string (e.g. "2026-13-45")
+  // usually parses straight to Invalid Date, but some out-of-range
+  // day-of-month values instead silently roll over into the next month
+  // (e.g. "2026-02-30" -> "2026-03-02"), which Number.isNaN can't catch.
+  // Comparing the constructed Date's own UTC components back against
+  // the parsed input catches both failure modes with one check.
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    throw new Error(
+      `fromDateOnlyString received a syntactically valid but calendrically invalid date: ${value}`,
+    );
+  }
+  return date;
 }
 
 // Today's calendar date where the server is running, anchored at UTC
