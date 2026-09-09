@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { describe, expect, it, beforeEach, afterEach, afterAll } from 'vitest';
+import { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { todayDateOnly } from '../common/serialization.js';
 import { UsersService } from './users.service.js';
 
 describe('UsersService', () => {
@@ -46,5 +48,29 @@ describe('UsersService', () => {
     await expect(
       service.create({ email: testEmail, password: 'password456' }),
     ).rejects.toThrow('Email already registered');
+  });
+
+  it('rolls back the user row if a later write in the same transaction fails', async () => {
+    const rollbackEmail = `${testEmail}-rollback`;
+
+    await expect(
+      prisma.$transaction(async (tx) => {
+        await tx.user.create({ data: { email: rollbackEmail, passwordHash: 'x' } });
+        // Force a real Postgres FK violation on the second write, inside
+        // the same transaction, to prove $transaction actually rolls back
+        // the first write — not just that it's structurally wrapped in one.
+        await tx.account.create({
+          data: {
+            name: 'Should not persist',
+            currentBalance: new Prisma.Decimal(0),
+            referenceDate: todayDateOnly(),
+            userId: -1, // no user with this id exists — FK violation
+          },
+        });
+      }),
+    ).rejects.toThrow();
+
+    const rolledBackUser = await prisma.user.findUnique({ where: { email: rollbackEmail } });
+    expect(rolledBackUser).toBeNull();
   });
 });
