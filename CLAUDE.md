@@ -162,4 +162,8 @@ Learning checks passed: user correctly reasoned that a stolen static shared-secr
 
 **Real limitation surfaced during S2 testing** (see the new "Known limitation — backdated transactions" note under Financial correctness rules above): backdating a transaction to before `reference_date` silently has no effect on the displayed balance. Confirmed as correct-per-design (not a bug) with the user, documented rather than silently left implicit. This also surfaced a genuine backlog item: **multi-account support** (e.g. a separate "Cash" account with its own `reference_date`) is not built — schema already supports multiple accounts per user, but there's no `POST /accounts` endpoint, no account-creation UI, and no account-selection in the transaction form. Not in Sprint 4 scope; noted for a future sprint.
 
-**Next:** open S2's PR, merge, mark S1+S2 Done in Jira, close Sprint 4.
+PR #8 merged. **Sprint 4 complete: S1+S2 both done**, dashboard balance now matches the financial model instead of a naive transaction sum.
+
+**Process change (2026-09-09):** user gave direct feedback that end-of-story "explain in your own words" recall checks (brief §13's learning-verification step) aren't helping her — Jira/Scrum practice is the part that's actually landing. Dropped recall-quiz questions going forward; kept mini-lessons/technical explanations and Jira/PM guidance. Saved as a standing feedback memory outside this repo.
+
+**Next:** mark S1+S2 Done in Jira, close Sprint 4, decide Sprint 5 scope (multi-account support surfaced as backlog this sprint, or roadmap stage 5 — Analytics Service + 30-day forecast — per brief §19).
