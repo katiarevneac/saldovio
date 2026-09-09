@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { getTransactions } from "@/lib/transactions";
-import { getMyAccount } from "@/lib/accounts";
+import { getMyAccounts } from "@/lib/accounts";
 import { toBani, formatAmount } from "@/lib/money";
 import TransactionForm from "@/components/TransactionForm";
 import { auth, signOut } from "@/auth";
@@ -7,11 +8,14 @@ import styles from "./page.module.css";
 
 export default async function DashboardPage() {
   const session = await auth();
-  const [account, transactions] = await Promise.all([
-    getMyAccount(),
+  const [accounts, transactions] = await Promise.all([
+    getMyAccounts(),
     getTransactions(),
   ]);
-  const balanceBani = toBani(account.balance);
+  const totalBani = accounts.reduce(
+    (sum, account) => sum + toBani(account.balance),
+    0
+  );
 
   return (
     <div className={styles.page}>
@@ -35,12 +39,24 @@ export default async function DashboardPage() {
       <main>
         <section>
           <h2>Current balance</h2>
-          <p className={styles.balance}>{formatAmount(balanceBani)}</p>
+          <p className={styles.balance}>{formatAmount(totalBani)}</p>
+        </section>
+
+        <section>
+          <h2>Accounts</h2>
+          <ul className={styles.accountList}>
+            {accounts.map((account) => (
+              <li key={account.id}>
+                {account.name}: {formatAmount(toBani(account.balance))}
+              </li>
+            ))}
+          </ul>
+          <Link href="/accounts/new">Add account</Link>
         </section>
 
         <section>
           <h2>Add transaction</h2>
-          <TransactionForm />
+          <TransactionForm accounts={accounts} />
         </section>
 
         <section>

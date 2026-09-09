@@ -10,7 +10,7 @@ export type Account = {
   balance: string;
 };
 
-export async function getMyAccount(): Promise<Account> {
+export async function getMyAccounts(): Promise<Account[]> {
   const headers = await getAuthorizedHeaders();
   const response = await fetch(`${FINANCE_API_URL}/accounts/me`, {
     cache: "no-store",
@@ -21,11 +21,5 @@ export async function getMyAccount(): Promise<Account> {
     throw new Error(`Finance API returned ${response.status}`);
   }
 
-  const accounts: Account[] = await response.json();
-  const [account] = accounts;
-  if (!account) {
-    throw new Error("Current user has no account");
-  }
-
-  return account;
+  return response.json();
 }

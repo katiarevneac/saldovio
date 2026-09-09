@@ -3,10 +3,12 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createTransactionAction } from "@/app/actions";
+import type { Account } from "@/lib/accounts";
 import styles from "./TransactionForm.module.css";
 
-export default function TransactionForm() {
+export default function TransactionForm({ accounts }: { accounts: Account[] }) {
   const router = useRouter();
+  const [accountId, setAccountId] = useState(String(accounts[0]?.id ?? ""));
   const [type, setType] = useState<"expense" | "income">("expense");
   const [amount, setAmount] = useState("");
   const [occurredOn, setOccurredOn] = useState("");
@@ -27,6 +29,7 @@ export default function TransactionForm() {
 
     try {
       await createTransactionAction({
+        accountId: Number(accountId),
         type,
         amount: signedAmount,
         occurredOn,
@@ -45,6 +48,21 @@ export default function TransactionForm() {
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
+      <div className={styles.field}>
+        <label htmlFor="accountId">Account</label>
+        <select
+          id="accountId"
+          value={accountId}
+          onChange={(event) => setAccountId(event.target.value)}
+        >
+          {accounts.map((account) => (
+            <option key={account.id} value={account.id}>
+              {account.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className={styles.field}>
         <label htmlFor="type">Type</label>
         <select
