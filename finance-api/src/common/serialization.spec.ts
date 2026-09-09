@@ -35,6 +35,23 @@ describe('fromDateOnlyString', () => {
     const date = fromDateOnlyString('2026-09-10');
     expect(toDateOnlyString(date)).toBe('2026-09-10');
   });
+
+  // Regression test: @IsDateString() on the DTOs is ISO8601, which also
+  // accepts full timestamps. Before this guard, a value like this
+  // produced `new Date("...ZT00:00:00.000Z")` (Invalid Date), which then
+  // threw a PrismaClientValidationError inside the service and surfaced
+  // as an unhandled 500 instead of a clean 400. Now it's rejected loudly
+  // and explicitly, right here, instead of silently.
+  it('throws on a full ISO timestamp instead of producing an Invalid Date', () => {
+    expect(() => fromDateOnlyString('2026-09-10T12:00:00Z')).toThrow(
+      /expected a "YYYY-MM-DD" string/,
+    );
+  });
+
+  it('throws on other malformed input', () => {
+    expect(() => fromDateOnlyString('not-a-date')).toThrow(/expected a "YYYY-MM-DD" string/);
+    expect(() => fromDateOnlyString('2026-9-10')).toThrow(/expected a "YYYY-MM-DD" string/);
+  });
 });
 
 describe('todayDateOnly', () => {

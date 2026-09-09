@@ -25,7 +25,21 @@ export function toDateOnlyString(value: Date): string {
 // Inverse of toDateOnlyString — anchors a "YYYY-MM-DD" value at UTC
 // midnight before writing it to a @db.Date field, so the write side
 // can't reintroduce the shift the read side guards against above.
+//
+// Rejects anything that isn't exactly "YYYY-MM-DD" instead of silently
+// producing an Invalid Date. @IsDateString() (used on the DTOs that
+// feed this function) is ISO8601, which also accepts full timestamps
+// like "2026-09-10T12:00:00Z" — without this guard, that input became
+// `new Date("...ZT00:00:00.000Z")` (Invalid Date), which then threw a
+// PrismaClientValidationError deep inside the service and surfaced as
+// an unhandled 500 instead of a clean 400. The DTOs are additionally
+// tightened (see create-transaction.dto.ts / create-account.dto.ts) so
+// ValidationPipe catches this before it ever reaches here — this throw
+// is the defense-in-depth backstop, not the primary guard.
 export function fromDateOnlyString(value: string): Date {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new Error(`fromDateOnlyString expected a "YYYY-MM-DD" string, got: ${value}`);
+  }
   return new Date(`${value}T00:00:00.000Z`);
 }
 
