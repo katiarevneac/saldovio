@@ -184,4 +184,6 @@ Sprint 5 closed. **Sprint 6 started** (2 weeks, 2026-09-09 → 2026-09-23): Epic
 
 **Process change (2026-09-09):** user asked Claude to create and merge PRs directly via `gh` CLI going forward, instead of handing off title/description for her to action on GitHub. Installed `gh` via Homebrew, she ran `gh auth login` once. PR #11 (S1) was the first PR created and merged this way — same Why/What/How-verified description convention kept, just automated who clicks merge. Saved as a standing feedback memory outside this repo.
 
-**Next:** mark S1 Done in Jira, start S2 (recurring-rule creation UI in `web/`).
+**S2 done.** `web/lib/recurring-rules.ts` (`getMyRecurringRules`), `createRecurringRuleAction` (mirrors `createAccountAction`), `/recurring-rules/new` page, dashboard "Recurring rules" section. **Found and fixed while wiring display:** `CreateRecurringRuleDto` didn't enforce `amount > 0` — added `@IsPositive()`. Recurring rules store amount as a positive magnitude, unlike transactions' signed amount — the forecast formula adds income and subtracts expense explicitly by `type`, so sign belongs in the formula (S3), not the stored value. Verified in browser: rule created, appears on dashboard with correct sign applied for display. PR #12 merged.
+
+**Next:** mark S1+S2 Done in Jira, start S3 (Analytics Service, FastAPI, `/forecast`).
