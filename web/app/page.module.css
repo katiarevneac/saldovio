@@ -4,6 +4,24 @@
   padding: 2rem 1rem;
 }
 
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.header form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sessionEmail {
+  font-size: 0.875rem;
+  color: #555;
+}
+
 .balance {
   font-size: 1.5rem;
   font-weight: bold;
