@@ -12,10 +12,7 @@ export const metadata: Metadata = {
   description: "Personal finance decision assistant",
 };
 
-export default function RootLayout({
-  children,
-  params,
-}: LayoutProps<"/">) {
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={archivo.variable}>
       <body>{children}</body>
