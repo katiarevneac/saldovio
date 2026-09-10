@@ -15,13 +15,6 @@ vi.mock("next/navigation", () => ({
   redirect: redirectMock,
 }));
 
-const { getTransactionsMock } = vi.hoisted(() => ({
-  getTransactionsMock: vi.fn(),
-}));
-vi.mock("@/lib/transactions", () => ({
-  getTransactions: getTransactionsMock,
-}));
-
 const { getMyAccountsMock } = vi.hoisted(() => ({
   getMyAccountsMock: vi.fn(),
 }));
@@ -61,7 +54,6 @@ import DashboardPage from "./page";
 beforeEach(() => {
   authMock.mockReset();
   redirectMock.mockClear();
-  getTransactionsMock.mockReset();
   getMyAccountsMock.mockReset();
   getMyRecurringRulesMock.mockReset();
   getForecastMock.mockReset();
@@ -75,7 +67,6 @@ describe("DashboardPage", () => {
 
     expect(redirectMock).toHaveBeenCalledWith("/login");
     expect(getMyAccountsMock).not.toHaveBeenCalled();
-    expect(getTransactionsMock).not.toHaveBeenCalled();
     expect(getMyRecurringRulesMock).not.toHaveBeenCalled();
   });
 
@@ -84,7 +75,6 @@ describe("DashboardPage", () => {
       user: { id: "1", email: "test@example.com" },
     });
     getMyAccountsMock.mockResolvedValue([]);
-    getTransactionsMock.mockResolvedValue([]);
     getMyRecurringRulesMock.mockResolvedValue([]);
     getForecastMock.mockResolvedValue({
       forecastBalance: "0.00",

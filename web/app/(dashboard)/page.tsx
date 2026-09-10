@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getTransactions } from "@/lib/transactions";
 import { getMyAccounts } from "@/lib/accounts";
 import { getMyRecurringRules } from "@/lib/recurring-rules";
 import { getForecast, type Forecast } from "@/lib/analytics";
@@ -15,9 +14,8 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const [accounts, transactions, recurringRules] = await Promise.all([
+  const [accounts, recurringRules] = await Promise.all([
     getMyAccounts(),
-    getTransactions(),
     getMyRecurringRules(),
   ]);
   const totalBani = accounts.reduce(
@@ -25,10 +23,6 @@ export default async function DashboardPage() {
     0
   );
 
-  // Analytics Service is a separate, independently-deployable
-  // component — it going down must never affect the core dashboard,
-  // and an unavailable forecast must never silently render as zero
-  // (CLAUDE.md). Caught locally, not left to crash the whole page.
   let forecast: Forecast | null = null;
   let forecastError = false;
   try {
@@ -119,29 +113,7 @@ export default async function DashboardPage() {
 
         <section>
           <h2>Transactions</h2>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Category</th>
-                <th>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transactions.map((t) => {
-                const bani = toBani(t.amount);
-                return (
-                  <tr key={t.id}>
-                    <td>{t.occurred_on}</td>
-                    <td>{t.category ?? ""}</td>
-                    <td className={bani < 0 ? styles.expense : styles.income}>
-                      {formatAmount(bani)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <Link href="/transactions">View all transactions</Link>
         </section>
       </main>
     </div>
