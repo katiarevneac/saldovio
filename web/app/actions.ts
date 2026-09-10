@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { FINANCE_API_URL } from "@/lib/config";
 import { getAuthorizedHeaders } from "@/lib/internal-auth";
 import { extractApiErrorMessage } from "@/lib/api-errors";
+import { CreateAccountSchema } from "@/lib/schemas/accounts";
 
 export type CreateTransactionInput = {
   accountId: number;
@@ -31,16 +32,22 @@ export async function createTransactionAction(
 }
 
 export async function createAccountAction(formData: FormData): Promise<void> {
+  const parsed = CreateAccountSchema.safeParse({
+    name: formData.get("name"),
+    currentBalance: formData.get("currentBalance"),
+    referenceDate: formData.get("referenceDate"),
+  });
+  if (!parsed.success) {
+    const message = parsed.error.issues.map((issue) => issue.message).join(", ");
+    redirect(`/accounts/new?error=${encodeURIComponent(message)}`);
+  }
+
   const headers = await getAuthorizedHeaders();
 
   const response = await fetch(`${FINANCE_API_URL}/accounts`, {
     method: "POST",
     headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      name: formData.get("name"),
-      currentBalance: Number(formData.get("currentBalance")),
-      referenceDate: formData.get("referenceDate"),
-    }),
+    body: JSON.stringify(parsed.data),
   });
 
   if (!response.ok) {
