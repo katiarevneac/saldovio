@@ -17,6 +17,16 @@ export function formatAmount(bani: number): string {
   }).format(bani / 100);
 }
 
+// Same locale/rounding convention as formatAmount, but without the "RON"
+// currency symbol — for layouts (KPI cards) that render "RON" and the
+// number as separate typographic elements.
+export function formatAmountValue(bani: number): string {
+  return new Intl.NumberFormat("ro-RO", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(bani / 100);
+}
+
 // Inverse of toBani — needed to send the aggregate balance (computed
 // as integer bani, to avoid float error while summing) back out as a
 // decimal string for Analytics Service's Decimal-typed request field.
