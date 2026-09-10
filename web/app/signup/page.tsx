@@ -1,18 +1,25 @@
 import { redirect } from "next/navigation";
 import { FINANCE_API_URL } from "@/lib/config";
 import { extractApiErrorMessage } from "@/lib/api-errors";
+import { SignupSchema } from "@/lib/schemas/auth";
 import styles from "./page.module.css";
 
 async function signupAction(formData: FormData) {
   "use server";
 
+  const parsed = SignupSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+  if (!parsed.success) {
+    const message = parsed.error.issues.map((issue) => issue.message).join(", ");
+    redirect(`/signup?error=${encodeURIComponent(message)}`);
+  }
+
   const response = await fetch(`${FINANCE_API_URL}/users`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email: formData.get("email"),
-      password: formData.get("password"),
-    }),
+    body: JSON.stringify(parsed.data),
   });
 
   if (!response.ok) {
