@@ -1,17 +1,36 @@
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  --color-background: #0a0c0a;
+  --color-surface: #141813;
+  --color-border: #2a2f28;
+  --color-text-primary: #eef2e8;
+  --color-text-secondary: #a9b3a3;
+  --color-text-tertiary: #9aa394;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-accent: #c9f562;
+  --color-accent-on: #0a0c0a;
+  --color-accent-tint-bg: #1d2a12;
+  --color-accent-tint-border: #3d5a1c;
+
+  --color-expense-tint-bg: #2b1a16;
+  --color-expense-tint-icon: #f08b6d;
+
+  --color-verdict-yes: #c9f562;
+  --color-verdict-tight: #f0b34d;
+  --color-verdict-no: #f0715a;
+
+  --radius-card: 16px;
+  --radius-control: 12px;
+  --radius-pill: 999px;
+
+  --space-card-padding: 20px;
+  --space-gap: 14px;
+
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
 
 html {
   height: 100%;
+  color-scheme: dark;
 }
 
 html,
@@ -24,9 +43,11 @@ body {
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--color-text-primary);
+  background: var(--color-background);
+  font-family: var(--font-archivo), Arial, Helvetica, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -42,8 +63,13 @@ a {
   text-decoration: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-card-padding);
+}
+
+.tabularNums {
+  font-variant-numeric: tabular-nums;
 }
