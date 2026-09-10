@@ -21,4 +21,28 @@ describe("isPathAuthorized", () => {
       true
     );
   });
+
+  it("blocks an unauthenticated request to /transactions", () => {
+    expect(
+      isPathAuthorized({ hasSession: false, pathname: "/transactions" })
+    ).toBe(false);
+  });
+
+  it("allows an authenticated request to /transactions", () => {
+    expect(
+      isPathAuthorized({ hasSession: true, pathname: "/transactions" })
+    ).toBe(true);
+  });
+
+  it("blocks an unauthenticated request to /accounts", () => {
+    expect(
+      isPathAuthorized({ hasSession: false, pathname: "/accounts" })
+    ).toBe(false);
+  });
+
+  it("allows an authenticated request to /accounts", () => {
+    expect(
+      isPathAuthorized({ hasSession: true, pathname: "/accounts" })
+    ).toBe(true);
+  });
 });

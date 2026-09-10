@@ -1,0 +1,36 @@
+.sidebar {
+  width: 250px;
+  flex-shrink: 0;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  padding: 20px 0;
+}
+
+.list {
+  list-style: none;
+}
+
+.item {
+  display: block;
+  padding: 11px 14px;
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-control);
+}
+
+.item:hover {
+  color: var(--color-text-primary);
+}
+
+.item[aria-current="page"] {
+  color: var(--color-accent-on);
+  background: var(--color-accent);
+  font-weight: 700;
+}
+
+.itemDisabled {
+  display: block;
+  padding: 11px 14px;
+  color: var(--color-text-tertiary);
+  cursor: default;
+  opacity: 0.6;
+}
