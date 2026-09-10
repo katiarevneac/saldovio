@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getTransactions } from "@/lib/transactions";
 import { getMyAccounts } from "@/lib/accounts";
 import { getMyRecurringRules } from "@/lib/recurring-rules";
@@ -10,6 +11,10 @@ import styles from "./page.module.css";
 
 export default async function DashboardPage() {
   const session = await auth();
+  if (!session?.user) {
+    redirect("/login");
+  }
+
   const [accounts, transactions, recurringRules] = await Promise.all([
     getMyAccounts(),
     getTransactions(),
@@ -36,19 +41,15 @@ export default async function DashboardPage() {
     <div className={styles.page}>
       <header className={styles.header}>
         <h1>Saldovio</h1>
-        {session?.user ? (
-          <form
-            action={async () => {
-              "use server";
-              await signOut({ redirectTo: "/login" });
-            }}
-          >
-            <span className={styles.sessionEmail}>{session.user.email}</span>
-            <button type="submit">Log out</button>
-          </form>
-        ) : (
-          <a href="/login">Log in</a>
-        )}
+        <form
+          action={async () => {
+            "use server";
+            await signOut({ redirectTo: "/login" });
+          }}
+        >
+          <span className={styles.sessionEmail}>{session.user.email}</span>
+          <button type="submit">Log out</button>
+        </form>
       </header>
 
       <main>
