@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { FINANCE_API_URL } from "@/lib/config";
+import { extractApiErrorMessage } from "@/lib/api-errors";
 import styles from "./page.module.css";
 
 async function signupAction(formData: FormData) {
@@ -15,10 +16,7 @@ async function signupAction(formData: FormData) {
   });
 
   if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    const message = Array.isArray(body?.message)
-      ? body.message.join(", ")
-      : (body?.message ?? "Signup failed");
+    const message = await extractApiErrorMessage(response, "Signup failed");
     redirect(`/signup?error=${encodeURIComponent(message)}`);
   }
 
