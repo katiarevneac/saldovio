@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { authMock } = vi.hoisted(() => ({ authMock: vi.fn() }));
 vi.mock("@/auth", () => ({
   auth: authMock,
-  signOut: vi.fn(),
 }));
 
 const { redirectMock } = vi.hoisted(() => ({
