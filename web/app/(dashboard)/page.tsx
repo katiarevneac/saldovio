@@ -54,14 +54,7 @@ export default async function DashboardPage() {
 
         <section>
           <h2>Accounts</h2>
-          <ul className={styles.accountList}>
-            {accounts.map((account) => (
-              <li key={account.id}>
-                {account.name}: {formatAmount(toBani(account.balance))}
-              </li>
-            ))}
-          </ul>
-          <Link href="/accounts/new">Add account</Link>
+          <Link href="/accounts">View all accounts</Link>
         </section>
 
         <section>
