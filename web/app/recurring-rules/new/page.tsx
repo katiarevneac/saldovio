@@ -1,11 +1,18 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createRecurringRuleAction } from "@/app/actions";
 import { getMyAccounts } from "@/lib/accounts";
+import { auth } from "@/auth";
 import styles from "./page.module.css";
 
 export default async function NewRecurringRulePage(
   props: PageProps<"/recurring-rules/new">
 ) {
+  const session = await auth();
+  if (!session?.user) {
+    redirect("/login");
+  }
+
   const [searchParams, accounts] = await Promise.all([
     props.searchParams,
     getMyAccounts(),

@@ -1,8 +1,15 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createAccountAction } from "@/app/actions";
+import { auth } from "@/auth";
 import styles from "./page.module.css";
 
 export default async function NewAccountPage(props: PageProps<"/accounts/new">) {
+  const session = await auth();
+  if (!session?.user) {
+    redirect("/login");
+  }
+
   const searchParams = await props.searchParams;
   const errorMessage =
     typeof searchParams.error === "string" ? searchParams.error : null;
