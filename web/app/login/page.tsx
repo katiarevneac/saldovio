@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 import { signIn } from "@/auth";
+import { LoginSchema } from "@/lib/schemas/auth";
 import styles from "./page.module.css";
 
 const SIGNIN_ERROR_URL = "/login";
@@ -19,10 +20,20 @@ export default async function LoginPage(props: PageProps<"/login">) {
         className={styles.form}
         action={async (formData) => {
           "use server";
+
+          const parsed = LoginSchema.safeParse({
+            email: formData.get("email"),
+            password: formData.get("password"),
+          });
+          if (!parsed.success) {
+            const message = parsed.error.issues.map((issue) => issue.message).join(", ");
+            return redirect(`${SIGNIN_ERROR_URL}?error=${encodeURIComponent(message)}`);
+          }
+
           try {
             await signIn("credentials", {
-              email: formData.get("email"),
-              password: formData.get("password"),
+              email: parsed.data.email,
+              password: parsed.data.password,
               redirectTo: "/",
             });
           } catch (error) {

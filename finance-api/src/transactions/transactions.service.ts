@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
-import { Prisma } from '../../generated/prisma/client.js';
+import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { toDecimalString, toDateOnlyString, fromDateOnlyString } from '../common/serialization.js';
 import { CreateTransactionDto } from './dto/create-transaction.dto.js';

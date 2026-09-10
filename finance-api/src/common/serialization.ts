@@ -1,4 +1,4 @@
-import type { Prisma } from '../../generated/prisma/client.js';
+import type { Prisma } from '../generated/prisma/client.js';
 
 // Prisma returns NUMERIC columns as Decimal.js instances, not strings.
 // CLAUDE.md's "money is never a float" rule has already been enforced

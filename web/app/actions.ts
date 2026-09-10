@@ -3,6 +3,9 @@
 import { redirect } from "next/navigation";
 import { FINANCE_API_URL } from "@/lib/config";
 import { getAuthorizedHeaders } from "@/lib/internal-auth";
+import { extractApiErrorMessage } from "@/lib/api-errors";
+import { CreateAccountSchema } from "@/lib/schemas/accounts";
+import { CreateRecurringRuleSchema } from "@/lib/schemas/recurring-rules";
 
 export type CreateTransactionInput = {
   accountId: number;
@@ -24,32 +27,32 @@ export async function createTransactionAction(
   });
 
   if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    const message = Array.isArray(body?.message)
-      ? body.message.join(", ")
-      : body?.message;
-    throw new Error(message ?? `Finance API returned ${response.status}`);
+    const message = await extractApiErrorMessage(response, `Finance API returned ${response.status}`);
+    throw new Error(message);
   }
 }
 
 export async function createAccountAction(formData: FormData): Promise<void> {
+  const parsed = CreateAccountSchema.safeParse({
+    name: formData.get("name"),
+    currentBalance: formData.get("currentBalance"),
+    referenceDate: formData.get("referenceDate"),
+  });
+  if (!parsed.success) {
+    const message = parsed.error.issues.map((issue) => issue.message).join(", ");
+    redirect(`/accounts/new?error=${encodeURIComponent(message)}`);
+  }
+
   const headers = await getAuthorizedHeaders();
 
   const response = await fetch(`${FINANCE_API_URL}/accounts`, {
     method: "POST",
     headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      name: formData.get("name"),
-      currentBalance: Number(formData.get("currentBalance")),
-      referenceDate: formData.get("referenceDate"),
-    }),
+    body: JSON.stringify(parsed.data),
   });
 
   if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    const message = Array.isArray(body?.message)
-      ? body.message.join(", ")
-      : (body?.message ?? "Could not create account");
+    const message = await extractApiErrorMessage(response, "Could not create account");
     redirect(`/accounts/new?error=${encodeURIComponent(message)}`);
   }
 
@@ -57,25 +60,28 @@ export async function createAccountAction(formData: FormData): Promise<void> {
 }
 
 export async function createRecurringRuleAction(formData: FormData): Promise<void> {
+  const parsed = CreateRecurringRuleSchema.safeParse({
+    accountId: formData.get("accountId"),
+    type: formData.get("type"),
+    amount: formData.get("amount"),
+    dayOfMonth: formData.get("dayOfMonth"),
+    category: formData.get("category") || undefined,
+  });
+  if (!parsed.success) {
+    const message = parsed.error.issues.map((issue) => issue.message).join(", ");
+    redirect(`/recurring-rules/new?error=${encodeURIComponent(message)}`);
+  }
+
   const headers = await getAuthorizedHeaders();
 
   const response = await fetch(`${FINANCE_API_URL}/recurring-rules`, {
     method: "POST",
     headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      accountId: Number(formData.get("accountId")),
-      type: formData.get("type"),
-      amount: Number(formData.get("amount")),
-      dayOfMonth: Number(formData.get("dayOfMonth")),
-      category: formData.get("category") || undefined,
-    }),
+    body: JSON.stringify(parsed.data),
   });
 
   if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    const message = Array.isArray(body?.message)
-      ? body.message.join(", ")
-      : (body?.message ?? "Could not create recurring rule");
+    const message = await extractApiErrorMessage(response, "Could not create recurring rule");
     redirect(`/recurring-rules/new?error=${encodeURIComponent(message)}`);
   }
 

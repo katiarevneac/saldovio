@@ -1,6 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
-import { Prisma } from '../../generated/prisma/client.js';
+import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { todayDateOnly } from '../common/serialization.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
