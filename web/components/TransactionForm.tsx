@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createTransactionAction } from "@/app/actions";
 import type { Account } from "@/lib/accounts";
+import { CreateTransactionSchema } from "@/lib/schemas/transactions";
 import styles from "./TransactionForm.module.css";
 
 export default function TransactionForm({ accounts }: { accounts: Account[] }) {
@@ -27,14 +28,21 @@ export default function TransactionForm({ accounts }: { accounts: Account[] }) {
     const signedAmount =
       type === "expense" ? -Math.abs(enteredAmount) : Math.abs(enteredAmount);
 
+    const parsed = CreateTransactionSchema.safeParse({
+      accountId: Number(accountId),
+      type,
+      amount: signedAmount,
+      occurredOn,
+      category: category || undefined,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues.map((issue) => issue.message).join(", "));
+      setSubmitting(false);
+      return;
+    }
+
     try {
-      await createTransactionAction({
-        accountId: Number(accountId),
-        type,
-        amount: signedAmount,
-        occurredOn,
-        category: category || undefined,
-      });
+      await createTransactionAction(parsed.data);
       setAmount("");
       setOccurredOn("");
       setCategory("");
