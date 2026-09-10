@@ -9,7 +9,7 @@ describe('CreateTransactionSchema', () => {
   });
 
   it('accepts a valid transaction with no category (optional)', () => {
-    const { category, ...withoutCategory } = valid;
+    const { category: _category, ...withoutCategory } = valid;
     expect(CreateTransactionSchema.safeParse(withoutCategory).success).toBe(true);
   });
 
