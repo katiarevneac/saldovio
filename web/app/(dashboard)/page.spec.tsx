@@ -196,4 +196,19 @@ describe("DashboardPage", () => {
 
     expect(screen.getByText(/Forecast unavailable right now/)).toBeInTheDocument();
   });
+
+  it("renders the add-transaction trigger, with the modal closed by default", async () => {
+    getMyAccountsMock.mockResolvedValue([]);
+    getTransactionsMock.mockResolvedValue([]);
+
+    const ui = await DashboardPage();
+    render(ui);
+
+    expect(
+      screen.getByRole("button", { name: "+ Add transaction" })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Add transaction" })
+    ).not.toBeInTheDocument();
+  });
 });

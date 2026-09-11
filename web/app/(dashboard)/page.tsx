@@ -7,7 +7,7 @@ import { getForecast, type Forecast } from "@/lib/analytics";
 import { toBani, baniToDecimalString, formatAmount } from "@/lib/money";
 import { computeMonthlyTotals, currentYearMonth } from "@/lib/overview-metrics";
 import KpiCard from "@/components/KpiCard";
-import TransactionForm from "@/components/TransactionForm";
+import AddTransactionModal from "@/components/AddTransactionModal";
 import { auth } from "@/auth";
 import styles from "./page.module.css";
 
@@ -84,8 +84,11 @@ export default async function DashboardPage() {
   return (
     <div className={styles.page}>
       <div className={styles.hero}>
-        <h1 className={styles.heroTitle}>Your money, in perspective.</h1>
-        <p className={styles.heroSub}>A clearer view of today. A plan for tomorrow.</p>
+        <div>
+          <h1 className={styles.heroTitle}>Your money, in perspective.</h1>
+          <p className={styles.heroSub}>A clearer view of today. A plan for tomorrow.</p>
+        </div>
+        <AddTransactionModal accounts={accounts} />
       </div>
 
       <div className={styles.kpiGrid}>
@@ -213,11 +216,6 @@ export default async function DashboardPage() {
         <p className={styles.placeholderText}>
           &ldquo;Can I afford it?&rdquo; scenario planning is coming in a later story.
         </p>
-      </section>
-
-      <section className={styles.card}>
-        <h2 className={styles.cardTitle}>Add transaction</h2>
-        <TransactionForm accounts={accounts} />
       </section>
     </div>
   );

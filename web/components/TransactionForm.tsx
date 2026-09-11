@@ -7,7 +7,13 @@ import type { Account } from "@/lib/accounts";
 import { CreateTransactionSchema } from "@/lib/schemas/transactions";
 import styles from "./TransactionForm.module.css";
 
-export default function TransactionForm({ accounts }: { accounts: Account[] }) {
+export default function TransactionForm({
+  accounts,
+  onSuccess,
+}: {
+  accounts: Account[];
+  onSuccess?: () => void;
+}) {
   const router = useRouter();
   const [accountId, setAccountId] = useState(String(accounts[0]?.id ?? ""));
   const [type, setType] = useState<"expense" | "income">("expense");
@@ -47,6 +53,7 @@ export default function TransactionForm({ accounts }: { accounts: Account[] }) {
       setOccurredOn("");
       setCategory("");
       router.refresh();
+      onSuccess?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
