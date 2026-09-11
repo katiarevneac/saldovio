@@ -102,13 +102,15 @@ export default function TransactionsExplorer({
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {transactions.length === 0 ? (
+        <p className={styles.emptyState}>No transactions yet.</p>
+      ) : filtered.length === 0 ? (
         <p className={styles.emptyState}>No transactions match your filters.</p>
       ) : density === "by-day" ? (
         <div className={styles.dayGroups}>
           {groupTransactionsByDay(filtered).map((group) => (
             <div key={group.date} className={styles.dayGroup}>
-              <h3 className={styles.dayHeading}>{group.date}</h3>
+              <h2 className={styles.dayHeading}>{group.date}</h2>
               <ul className={styles.dayList}>
                 {group.items.map((transaction) => {
                   const bani = toBani(transaction.amount);

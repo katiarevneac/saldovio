@@ -117,6 +117,13 @@
   gap: 18px;
 }
 
+/* Per-group wrapper hook — intentionally empty. Spacing between groups
+   comes from .dayGroups' flex gap on the parent; this class exists so the
+   single-group <div> references a real (if currently unstyled) selector
+   instead of a name absent from this file. */
+.dayGroup {
+}
+
 .dayHeading {
   margin: 0 0 8px;
   font-size: 13px;

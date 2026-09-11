@@ -71,7 +71,7 @@ describe("TransactionsPage", () => {
     render(ui);
 
     expect(screen.getByRole("heading", { name: "Transactions" })).toBeInTheDocument();
-    expect(screen.getByText(/2 transactions/)).toBeInTheDocument();
+    expect(screen.getByText(/All transactions ·/)).toBeInTheDocument();
     // Both fixture transactions share account_id 1, so "Revolut" renders in
     // two table cells — getAllByText avoids the multiple-match error
     // getByText would throw here (same class of collision documented in
@@ -80,7 +80,7 @@ describe("TransactionsPage", () => {
     expect(screen.getByRole("button", { name: "+ Add transaction" })).toBeInTheDocument();
   });
 
-  it("renders singular transaction count when there is exactly one", async () => {
+  it("renders the fixed header text with a single transaction and no accounts", async () => {
     getTransactionsMock.mockResolvedValue([
       { id: 1, account_id: 1, type: "expense", amount: "-10.00", occurred_on: "2026-09-14", category: "Transport" },
     ]);
@@ -89,6 +89,8 @@ describe("TransactionsPage", () => {
     const ui = await TransactionsPage();
     render(ui);
 
-    expect(screen.getByText(/1 transaction ·/)).toBeInTheDocument();
+    // The header no longer varies by count (Finding 3, 2026-09-11 fix wave) —
+    // this still exercises a distinct fixture shape (1 transaction, 0 accounts).
+    expect(screen.getByText(/All transactions ·/)).toBeInTheDocument();
   });
 });

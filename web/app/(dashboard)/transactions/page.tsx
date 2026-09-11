@@ -30,9 +30,7 @@ export default async function TransactionsPage() {
       <div className={styles.hero}>
         <div>
           <h1 className={styles.heroTitle}>Transactions</h1>
-          <p className={styles.heroSub}>
-            {transactions.length} transaction{transactions.length === 1 ? "" : "s"} · {monthLabel}
-          </p>
+          <p className={styles.heroSub}>All transactions · {monthLabel}</p>
         </div>
         <AddTransactionModal accounts={accounts} />
       </div>

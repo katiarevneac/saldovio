@@ -50,4 +50,17 @@ describe("TransactionsExplorer", () => {
     });
     expect(screen.getByText("No transactions match your filters.")).toBeInTheDocument();
   });
+
+  it("shows a true-empty state distinct from the no-matches state when there are no transactions at all", () => {
+    render(<TransactionsExplorer transactions={[]} accountNameById={accountNameById} />);
+    expect(screen.getByText("No transactions yet.")).toBeInTheDocument();
+    expect(screen.queryByText("No transactions match your filters.")).not.toBeInTheDocument();
+  });
+
+  it("groups rows under h2 date headings in 'by day' density (heading outline continuity)", () => {
+    render(<TransactionsExplorer transactions={transactions} accountNameById={accountNameById} />);
+    fireEvent.click(screen.getByRole("button", { name: "By day" }));
+    expect(screen.getByRole("heading", { level: 2, name: "2026-09-14" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "2026-09-01" })).toBeInTheDocument();
+  });
 });
