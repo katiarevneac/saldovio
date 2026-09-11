@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, type MouseEvent, type ReactNode } from "react";
 import styles from "./Modal.module.css";
 
 export default function Modal({
@@ -15,6 +15,7 @@ export default function Modal({
   children: ReactNode;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -38,13 +39,18 @@ export default function Modal({
     <dialog
       ref={dialogRef}
       className={styles.dialog}
+      aria-labelledby={title ? titleId : undefined}
       onClose={onClose}
       onCancel={onClose}
       onClick={handleBackdropClick}
     >
       {open ? (
         <div className={styles.content}>
-          {title ? <h2 className={styles.title}>{title}</h2> : null}
+          {title ? (
+            <h2 id={titleId} className={styles.title}>
+              {title}
+            </h2>
+          ) : null}
           <button
             type="button"
             className={styles.closeButton}

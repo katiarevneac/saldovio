@@ -68,5 +68,6 @@ describe("Modal", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Add transaction" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Add transaction" })).toBeInTheDocument();
   });
 });
