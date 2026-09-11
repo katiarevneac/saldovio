@@ -1,0 +1,141 @@
+.card {
+  composes: card from global;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-gap);
+}
+
+.filterBar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-border);
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-size: 14px;
+}
+
+.searchInput::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.chipRow,
+.densityRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip,
+.densityButton {
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chip[aria-pressed="true"],
+.densityButton[aria-pressed="true"] {
+  background: var(--color-accent);
+  color: var(--color-accent-on);
+  border-color: var(--color-accent);
+  font-weight: 700;
+}
+
+.pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-tint-bg);
+  border: 1px solid var(--color-accent-tint-border);
+  color: var(--color-accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.emptyState {
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  padding: 0 10px 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 13.5px;
+}
+
+.table[data-density="compact"] td {
+  padding: 7px 10px;
+  font-size: 13px;
+}
+
+.amountHeader {
+  text-align: right;
+}
+
+.amount {
+  composes: tabularNums from global;
+  text-align: right;
+  font-weight: 700;
+}
+
+.income {
+  color: var(--color-accent);
+}
+
+.expense {
+  color: var(--color-expense-tint-icon);
+}
+
+.dayGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.dayHeading {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.dayList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dayRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  align-items: center;
+  gap: 12px;
+  font-size: 13.5px;
+}
