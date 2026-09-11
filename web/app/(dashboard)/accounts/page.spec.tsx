@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
 
 const { authMock } = vi.hoisted(() => ({ authMock: vi.fn() }));
 vi.mock("@/auth", () => ({ auth: authMock }));
@@ -8,7 +9,9 @@ const { redirectMock } = vi.hoisted(() => ({
     throw new Error("NEXT_REDIRECT");
   }),
 }));
-vi.mock("next/navigation", () => ({ redirect: redirectMock }));
+vi.mock("next/navigation", () => ({
+  redirect: redirectMock,
+}));
 
 const { getMyAccountsMock } = vi.hoisted(() => ({
   getMyAccountsMock: vi.fn(),
@@ -23,6 +26,8 @@ beforeEach(() => {
   authMock.mockReset();
   redirectMock.mockClear();
   getMyAccountsMock.mockReset();
+
+  authMock.mockResolvedValue({ user: { id: "1", email: "test@example.com" } });
 });
 
 describe("AccountsPage", () => {
@@ -35,15 +40,44 @@ describe("AccountsPage", () => {
     expect(getMyAccountsMock).not.toHaveBeenCalled();
   });
 
-  it("fetches accounts and does not redirect when a session exists", async () => {
-    authMock.mockResolvedValue({
-      user: { id: "1", email: "test@example.com" },
-    });
+  it("renders the total balance and each account's balance, reference date, and share of total", async () => {
+    getMyAccountsMock.mockResolvedValue([
+      { id: 1, name: "Revolut", current_balance: "0.00", reference_date: "2026-01-01", balance: "7500.00" },
+      { id: 2, name: "Cash", current_balance: "0.00", reference_date: "2026-03-01", balance: "2500.00" },
+    ]);
+
+    const ui = await AccountsPage();
+    render(ui);
+
+    expect(screen.getByText("2 accounts")).toBeInTheDocument();
+    expect(screen.getAllByText(/^RON$/).length).toBeGreaterThan(0);
+    expect(screen.getByText("10.000,00")).toBeInTheDocument(); // total balance amount
+    expect(screen.getByText("Revolut")).toBeInTheDocument();
+    expect(screen.getByText("Cash")).toBeInTheDocument();
+    expect(screen.getByText("Reference date: 2026-01-01")).toBeInTheDocument();
+    expect(screen.getByText("75.0% of total")).toBeInTheDocument();
+    expect(screen.getByText("25.0% of total")).toBeInTheDocument();
+  });
+
+  it("shows an explicit unavailable percentage instead of a fabricated value when accounts net to zero", async () => {
+    getMyAccountsMock.mockResolvedValue([
+      { id: 1, name: "Revolut", current_balance: "0.00", reference_date: "2026-01-01", balance: "500.00" },
+      { id: 2, name: "Loan", current_balance: "0.00", reference_date: "2026-01-01", balance: "-500.00" },
+    ]);
+
+    const ui = await AccountsPage();
+    render(ui);
+
+    expect(screen.getAllByText("% of total: unavailable").length).toBe(2);
+  });
+
+  it("shows an empty state and no cards when the user has no accounts", async () => {
     getMyAccountsMock.mockResolvedValue([]);
 
-    await AccountsPage();
+    const ui = await AccountsPage();
+    render(ui);
 
-    expect(redirectMock).not.toHaveBeenCalled();
-    expect(getMyAccountsMock).toHaveBeenCalled();
+    expect(screen.getByText("No accounts yet.")).toBeInTheDocument();
+    expect(screen.getByText("0 accounts")).toBeInTheDocument();
   });
 });
