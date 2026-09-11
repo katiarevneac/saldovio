@@ -27,7 +27,7 @@
 }
 
 .error {
-  color: #b3261e;
+  color: var(--color-verdict-no);
   font-size: 0.875rem;
 }
 

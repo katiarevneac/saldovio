@@ -19,6 +19,11 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Settings", href: "/settings", disabled: true },
 ];
 
+function isActiveRoute(pathname: string, href: string): boolean {
+  if (pathname === href) return true;
+  return href !== "/" && pathname.startsWith(`${href}/`);
+}
+
 export default function Sidebar() {
   const pathname = usePathname();
 
@@ -39,7 +44,7 @@ export default function Sidebar() {
               <Link
                 href={item.href}
                 className={styles.item}
-                aria-current={pathname === item.href ? "page" : undefined}
+                aria-current={isActiveRoute(pathname, item.href) ? "page" : undefined}
               >
                 {item.label}
               </Link>

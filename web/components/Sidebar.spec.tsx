@@ -68,4 +68,29 @@ describe("Sidebar", () => {
       "true"
     );
   });
+
+  it("marks Accounts active for a nested route like /accounts/new", () => {
+    usePathnameMock.mockReturnValue("/accounts/new");
+    render(<Sidebar />);
+
+    expect(screen.getByRole("link", { name: "Accounts" })).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+    expect(
+      screen.getByRole("link", { name: "Overview" })
+    ).not.toHaveAttribute("aria-current");
+    expect(
+      screen.getByRole("link", { name: "Transactions" })
+    ).not.toHaveAttribute("aria-current");
+  });
+
+  it("does not mark Overview active for a nested route, only for the exact root path", () => {
+    usePathnameMock.mockReturnValue("/accounts");
+    render(<Sidebar />);
+
+    expect(
+      screen.getByRole("link", { name: "Overview" })
+    ).not.toHaveAttribute("aria-current");
+  });
 });
