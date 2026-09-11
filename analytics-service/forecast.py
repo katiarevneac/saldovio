@@ -36,12 +36,18 @@ class ForecastRequest(CamelModel):
     calculation_date: date
 
 
+class DailyBalance(CamelModel):
+    date: date
+    balance: Decimal
+
+
 class ForecastResponse(CamelModel):
     forecast_balance: Decimal
     calculation_date: date
     window_end_date: date
     formula_version: str
     assumptions: list[str]
+    daily_balances: list[DailyBalance]
 
 
 def _clamped_occurrence(year: int, month: int, day_of_month: int) -> date:
@@ -79,16 +85,29 @@ def _occurrences_in_window(
 def compute_forecast(request: ForecastRequest) -> ForecastResponse:
     window_end = request.calculation_date + timedelta(days=FORECAST_WINDOW_DAYS)
 
-    balance = request.current_balance
+    deltas_by_date: dict[date, Decimal] = {}
     for rule in request.recurring_rules:
         occurrences = _occurrences_in_window(
             rule.day_of_month, request.calculation_date, window_end
         )
-        for _ in occurrences:
-            balance += rule.amount if rule.type == "income" else -rule.amount
+        signed_amount = rule.amount if rule.type == "income" else -rule.amount
+        for occurrence in occurrences:
+            deltas_by_date[occurrence] = (
+                deltas_by_date.get(occurrence, Decimal("0")) + signed_amount
+            )
+
+    daily_balances: list[DailyBalance] = []
+    balance = request.current_balance
+    day = request.calculation_date
+    while True:
+        balance += deltas_by_date.get(day, Decimal("0"))
+        daily_balances.append(DailyBalance(date=day, balance=balance))
+        if day == window_end:
+            break
+        day += timedelta(days=1)
 
     return ForecastResponse(
-        forecast_balance=balance,
+        forecast_balance=daily_balances[-1].balance,
         calculation_date=request.calculation_date,
         window_end_date=window_end,
         formula_version=FORMULA_VERSION,
@@ -97,4 +116,5 @@ def compute_forecast(request: ForecastRequest) -> ForecastResponse:
             "One-off irregular past expenses are not statistically extrapolated.",
             "Interval convention: [calculation_date, calculation_date + 30 days).",
         ],
+        daily_balances=daily_balances,
     )

@@ -87,3 +87,50 @@ def test_monthly_rule_can_occur_twice_near_month_boundary():
 def test_forecast_balance_is_decimal_not_float():
     result = compute_forecast(_request("10.10", [], date(2026, 9, 9)))
     assert isinstance(result.forecast_balance, Decimal)
+
+
+def test_daily_balances_has_correct_length_and_date_range():
+    result = compute_forecast(_request("1000.00", [], date(2026, 9, 9)))
+    assert len(result.daily_balances) == 31
+    assert result.daily_balances[0].date == date(2026, 9, 9)
+    assert result.daily_balances[-1].date == date(2026, 10, 9)
+
+
+def test_daily_balances_dates_are_strictly_ordered():
+    result = compute_forecast(_request("1000.00", [], date(2026, 9, 9)))
+    dates = [entry.date for entry in result.daily_balances]
+    assert dates == sorted(dates)
+    assert len(dates) == len(set(dates))
+
+
+def test_daily_balances_last_point_matches_forecast_balance():
+    rule = RecurringRuleInput(type="income", amount=Decimal("500.00"), day_of_month=15)
+    result = compute_forecast(_request("1000.00", [rule], date(2026, 9, 9)))
+    assert result.daily_balances[-1].balance == result.forecast_balance
+
+
+def test_two_occurrence_rule_shows_up_mid_series_not_just_final_total():
+    # Jan 31 + 30 days = Mar 2 (exclusive). A day_of_month=1 rule lands
+    # on Feb 1 AND Mar 1, both inside the window — the daily series must
+    # step up at EACH occurrence date, not just reflect both in the total.
+    rule = RecurringRuleInput(type="income", amount=Decimal("100.00"), day_of_month=1)
+    result = compute_forecast(_request("0.00", [rule], date(2026, 1, 31)))
+
+    by_date = {entry.date: entry.balance for entry in result.daily_balances}
+    assert by_date[date(2026, 1, 31)] == Decimal("0.00")
+    assert by_date[date(2026, 2, 1)] == Decimal("100.00")
+    assert by_date[date(2026, 2, 28)] == Decimal("100.00")
+    assert by_date[date(2026, 3, 1)] == Decimal("200.00")
+    assert result.forecast_balance == Decimal("200.00")
+
+
+def test_occurrence_exactly_at_window_end_not_reflected_in_last_daily_point():
+    rule = RecurringRuleInput(type="income", amount=Decimal("100.00"), day_of_month=31)
+    result = compute_forecast(_request("0.00", [rule], date(2026, 10, 1)))
+    assert result.daily_balances[-1].date == date(2026, 10, 31)
+    assert result.daily_balances[-1].balance == Decimal("0.00")
+
+
+def test_daily_balances_are_decimal_not_float():
+    result = compute_forecast(_request("10.10", [], date(2026, 9, 9)))
+    assert all(isinstance(entry.balance, Decimal) for entry in result.daily_balances)
