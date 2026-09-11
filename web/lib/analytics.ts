@@ -8,6 +8,7 @@ export type Forecast = {
   windowEndDate: string;
   formulaVersion: string;
   assumptions: string[];
+  dailyBalances: { date: string; balance: string }[];
 };
 
 function todayDateString(): string {
