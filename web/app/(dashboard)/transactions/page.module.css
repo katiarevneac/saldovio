@@ -1,24 +1,26 @@
-.table {
-  width: 100%;
-  border-collapse: collapse;
+.page {
+  max-width: 1100px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-gap);
 }
 
-.table th,
-.table td {
-  padding: 0.5rem 0.75rem;
-  text-align: left;
-  border-bottom: 1px solid #e0e0e0;
+.hero {
+  padding: 0 0 6px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
 }
 
-.table th:last-child,
-.table td:last-child {
-  text-align: right;
+.heroTitle {
+  font-size: 32px;
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
 }
 
-.income {
-  color: #1a7f37;
-}
-
-.expense {
-  color: #b3261e;
+.heroSub {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-secondary);
 }

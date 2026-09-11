@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { getTransactions } from "@/lib/transactions";
-import { toBani, formatAmount } from "@/lib/money";
+import { getMyAccounts } from "@/lib/accounts";
 import { auth } from "@/auth";
+import AddTransactionModal from "@/components/AddTransactionModal";
+import TransactionsExplorer from "@/components/TransactionsExplorer";
 import styles from "./page.module.css";
 
 export default async function TransactionsPage() {
@@ -10,34 +12,32 @@ export default async function TransactionsPage() {
     redirect("/login");
   }
 
-  const transactions = await getTransactions();
+  const [transactions, accounts] = await Promise.all([
+    getTransactions(),
+    getMyAccounts(),
+  ]);
+
+  const accountNameById = Object.fromEntries(
+    accounts.map((account) => [account.id, account.name])
+  );
+  const monthLabel = new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
 
   return (
-    <div>
-      <h1>Transactions</h1>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Category</th>
-            <th>Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          {transactions.map((t) => {
-            const bani = toBani(t.amount);
-            return (
-              <tr key={t.id}>
-                <td>{t.occurred_on}</td>
-                <td>{t.category ?? ""}</td>
-                <td className={bani < 0 ? styles.expense : styles.income}>
-                  {formatAmount(bani)}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div className={styles.page}>
+      <div className={styles.hero}>
+        <div>
+          <h1 className={styles.heroTitle}>Transactions</h1>
+          <p className={styles.heroSub}>
+            {transactions.length} transaction{transactions.length === 1 ? "" : "s"} · {monthLabel}
+          </p>
+        </div>
+        <AddTransactionModal accounts={accounts} />
+      </div>
+
+      <TransactionsExplorer transactions={transactions} accountNameById={accountNameById} />
     </div>
   );
 }
