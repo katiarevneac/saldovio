@@ -1,0 +1,44 @@
+.dialog {
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  max-width: 420px;
+  width: calc(100vw - 32px);
+}
+
+.dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.content {
+  position: relative;
+  padding: var(--space-card-padding);
+}
+
+.title {
+  margin: 0 0 16px;
+  font-size: 19px;
+  padding-right: 28px;
+}
+
+.closeButton {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--radius-control);
+}
+
+.closeButton:hover {
+  color: var(--color-text-primary);
+  background: var(--color-border);
+}
