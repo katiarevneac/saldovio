@@ -56,7 +56,7 @@ export async function createAccountAction(formData: FormData): Promise<void> {
     redirect(`/accounts/new?error=${encodeURIComponent(message)}`);
   }
 
-  redirect("/");
+  redirect("/accounts");
 }
 
 export async function createRecurringRuleAction(formData: FormData): Promise<void> {

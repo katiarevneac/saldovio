@@ -6,9 +6,11 @@ describe("computePercentOfTotal", () => {
     expect(computePercentOfTotal(2500, 10000)).toBe(25);
   });
 
-  it("returns null when the total is zero, instead of NaN or a fabricated 0", () => {
+  it("returns null when the total is zero or negative, instead of a misleading or fabricated value", () => {
     expect(computePercentOfTotal(0, 0)).toBeNull();
     expect(computePercentOfTotal(500, 0)).toBeNull();
+    expect(computePercentOfTotal(500, -100)).toBeNull();
+    expect(computePercentOfTotal(-500, -100)).toBeNull();
   });
 
   it("handles a negative account balance against a positive total", () => {

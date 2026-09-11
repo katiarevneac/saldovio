@@ -51,7 +51,7 @@ export default async function NewAccountPage(props: PageProps<"/accounts/new">) 
       </form>
 
       <p>
-        <Link href="/">Back to dashboard</Link>
+        <Link href="/accounts">Back to accounts</Link>
       </p>
     </div>
   );

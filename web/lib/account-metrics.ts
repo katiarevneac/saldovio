@@ -4,7 +4,7 @@ export function computePercentOfTotal(
   accountBani: number,
   totalBani: number
 ): number | null {
-  if (totalBani === 0) return null;
+  if (totalBani <= 0) return null;
   return (accountBani / totalBani) * 100;
 }
 

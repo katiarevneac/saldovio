@@ -1,14 +1,14 @@
 .page {
-  max-width: 320px;
-  margin: 4rem auto;
-  padding: 1rem;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-gap);
 }
 
 .form {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  margin-top: 1rem;
 }
 
 .field {
@@ -32,7 +32,13 @@
 }
 
 .form button {
-  padding: 0.5rem 1rem;
-  font-size: 1rem;
+  align-self: flex-start;
+  padding: 11px 20px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-accent-on);
+  font-weight: 700;
+  font-size: 14px;
   cursor: pointer;
 }
