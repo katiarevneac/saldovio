@@ -1,37 +1,121 @@
 .page {
-  max-width: 640px;
-  margin: 0 auto;
-  padding: 2rem 1rem;
-}
-
-.balance {
-  font-size: 1.5rem;
-  font-weight: bold;
-}
-
-.accountList {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 0.5rem;
+  max-width: 1100px;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-gap);
+}
+
+.hero {
+  padding: 0 0 6px;
+}
+
+.heroTitle {
+  font-size: 32px;
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+}
+
+.heroSub {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-gap);
+}
+
+.card {
+  composes: card from global;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 19px;
+}
+
+.cardLink {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.cardLink:hover {
+  color: var(--color-text-primary);
+}
+
+.emptyState {
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+}
+
+.condensedList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.condensedRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13.5px;
+}
+
+.tabularNums {
+  composes: tabularNums from global;
+  font-weight: 700;
+}
+
+.forecastBalance {
+  font-weight: 800;
+  font-size: 26px;
+  letter-spacing: -0.03em;
+  margin-top: 4px;
 }
 
 .forecastMeta {
-  font-size: 0.875rem;
-  color: #555;
-  margin: 0.25rem 0;
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+  margin: 6px 0 0;
 }
 
 .forecastAssumptions {
-  font-size: 0.8rem;
-  color: #777;
-  padding-left: 1.25rem;
-  margin: 0.5rem 0 0;
+  font-size: 11.5px;
+  color: var(--color-text-tertiary);
+  padding-left: 18px;
+  margin: 10px 0 0;
+  line-height: 1.6;
 }
 
 .error {
-  color: #b3261e;
-  font-size: 0.875rem;
+  color: var(--color-verdict-no);
+  font-size: 13px;
+}
+
+.simulatorPlaceholder {
+  border-style: dashed;
+}
+
+.simulatorPlaceholder .cardTitle,
+.placeholderText {
+  color: var(--color-text-tertiary);
+}
+
+.placeholderText {
+  font-size: 13px;
+  margin: 0;
 }
