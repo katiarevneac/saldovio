@@ -14,7 +14,7 @@ export default async function DashboardLayout({
       <Sidebar />
       <main className={styles.main}>
         <header className={styles.header}>
-          <h1>Saldovio</h1>
+          <p className={styles.brand}>Saldovio</p>
           {session?.user ? (
             <form
               action={async () => {

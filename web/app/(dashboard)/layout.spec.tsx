@@ -28,7 +28,7 @@ describe("DashboardLayout", () => {
     const element = await DashboardLayout({ children: <div>page content</div> });
     render(element);
 
-    expect(screen.getByRole("heading", { name: "Saldovio" })).toBeInTheDocument();
+    expect(screen.getByText("Saldovio")).toBeInTheDocument();
     expect(screen.getByText("test@example.com")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Log out" })).toBeInTheDocument();
     expect(
@@ -54,7 +54,7 @@ describe("DashboardLayout", () => {
     const element = await DashboardLayout({ children: <div>page content</div> });
     render(element);
 
-    expect(screen.getByRole("heading", { name: "Saldovio" })).toBeInTheDocument();
+    expect(screen.getByText("Saldovio")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Log out" })
     ).not.toBeInTheDocument();

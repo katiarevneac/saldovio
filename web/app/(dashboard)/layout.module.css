@@ -24,5 +24,10 @@
 
 .sessionEmail {
   font-size: 0.875rem;
-  color: #555;
+  color: var(--color-text-secondary);
+}
+
+.brand {
+  font-size: 1.5rem;
+  font-weight: 700;
 }
