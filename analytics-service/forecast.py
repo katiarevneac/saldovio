@@ -115,6 +115,7 @@ def compute_forecast(request: ForecastRequest) -> ForecastResponse:
             "Includes only confirmed recurring rules (monthly frequency).",
             "One-off irregular past expenses are not statistically extrapolated.",
             "Interval convention: [calculation_date, calculation_date + 30 days).",
+            "Daily series covers [calculation_date, window_end_date] inclusive; the final point carries no occurrence, since the rule interval ends exclusively at window_end_date.",
         ],
         daily_balances=daily_balances,
     )

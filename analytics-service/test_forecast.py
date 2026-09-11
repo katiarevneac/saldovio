@@ -134,3 +134,17 @@ def test_occurrence_exactly_at_window_end_not_reflected_in_last_daily_point():
 def test_daily_balances_are_decimal_not_float():
     result = compute_forecast(_request("10.10", [], date(2026, 9, 9)))
     assert all(isinstance(entry.balance, Decimal) for entry in result.daily_balances)
+
+
+def test_same_day_rules_accumulate_instead_of_overwriting():
+    # Two rules landing on the same date (e.g. rent + salary both on the
+    # 15th) must both be applied — a same-day overwrite bug would silently
+    # drop one of them and pass every other test in this file.
+    income = RecurringRuleInput(type="income", amount=Decimal("500.00"), day_of_month=15)
+    expense = RecurringRuleInput(type="expense", amount=Decimal("200.00"), day_of_month=15)
+    result = compute_forecast(_request("1000.00", [income, expense], date(2026, 9, 9)))
+
+    by_date = {entry.date: entry.balance for entry in result.daily_balances}
+    assert by_date[date(2026, 9, 14)] == Decimal("1000.00")
+    assert by_date[date(2026, 9, 15)] == Decimal("1300.00")
+    assert result.forecast_balance == Decimal("1300.00")
