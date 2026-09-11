@@ -12,54 +12,56 @@ export default async function LoginPage(props: PageProps<"/login">) {
 
   return (
     <div className={styles.page}>
-      <h1>Log in</h1>
+      <div className={styles.card}>
+        <h1 className={styles.title}>Log in</h1>
 
-      {hasError && <p className={styles.error}>Invalid email or password.</p>}
+        {hasError && <p className={styles.error}>Invalid email or password.</p>}
 
-      <form
-        className={styles.form}
-        action={async (formData) => {
-          "use server";
+        <form
+          className={styles.form}
+          action={async (formData) => {
+            "use server";
 
-          const parsed = LoginSchema.safeParse({
-            email: formData.get("email"),
-            password: formData.get("password"),
-          });
-          if (!parsed.success) {
-            const message = parsed.error.issues.map((issue) => issue.message).join(", ");
-            return redirect(`${SIGNIN_ERROR_URL}?error=${encodeURIComponent(message)}`);
-          }
-
-          try {
-            await signIn("credentials", {
-              email: parsed.data.email,
-              password: parsed.data.password,
-              redirectTo: "/",
+            const parsed = LoginSchema.safeParse({
+              email: formData.get("email"),
+              password: formData.get("password"),
             });
-          } catch (error) {
-            if (error instanceof AuthError) {
-              return redirect(`${SIGNIN_ERROR_URL}?error=${error.type}`);
+            if (!parsed.success) {
+              const message = parsed.error.issues.map((issue) => issue.message).join(", ");
+              return redirect(`${SIGNIN_ERROR_URL}?error=${encodeURIComponent(message)}`);
             }
-            throw error;
-          }
-        }}
-      >
-        <div className={styles.field}>
-          <label htmlFor="email">Email</label>
-          <input id="email" name="email" type="email" required />
-        </div>
 
-        <div className={styles.field}>
-          <label htmlFor="password">Password</label>
-          <input id="password" name="password" type="password" required />
-        </div>
+            try {
+              await signIn("credentials", {
+                email: parsed.data.email,
+                password: parsed.data.password,
+                redirectTo: "/",
+              });
+            } catch (error) {
+              if (error instanceof AuthError) {
+                return redirect(`${SIGNIN_ERROR_URL}?error=${error.type}`);
+              }
+              throw error;
+            }
+          }}
+        >
+          <div className={styles.field}>
+            <label htmlFor="email">Email</label>
+            <input id="email" name="email" type="email" required />
+          </div>
 
-        <button type="submit">Log in</button>
-      </form>
+          <div className={styles.field}>
+            <label htmlFor="password">Password</label>
+            <input id="password" name="password" type="password" required />
+          </div>
 
-      <p>
-        No account? <a href="/signup">Sign up</a>
-      </p>
+          <button type="submit">Log in</button>
+        </form>
+
+        <p className={styles.footer}>
+          No account? <a href="/signup">Sign up</a>
+        </p>
+      </div>
     </div>
   );
 }

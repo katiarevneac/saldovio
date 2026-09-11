@@ -37,33 +37,35 @@ export default async function SignupPage(props: PageProps<"/signup">) {
 
   return (
     <div className={styles.page}>
-      <h1>Sign up</h1>
+      <div className={styles.card}>
+        <h1 className={styles.title}>Sign up</h1>
 
-      {errorMessage && <p className={styles.error}>{errorMessage}</p>}
+        {errorMessage && <p className={styles.error}>{errorMessage}</p>}
 
-      <form className={styles.form} action={signupAction}>
-        <div className={styles.field}>
-          <label htmlFor="email">Email</label>
-          <input id="email" name="email" type="email" required />
-        </div>
+        <form className={styles.form} action={signupAction}>
+          <div className={styles.field}>
+            <label htmlFor="email">Email</label>
+            <input id="email" name="email" type="email" required />
+          </div>
 
-        <div className={styles.field}>
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            required
-            minLength={8}
-          />
-        </div>
+          <div className={styles.field}>
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              required
+              minLength={8}
+            />
+          </div>
 
-        <button type="submit">Sign up</button>
-      </form>
+          <button type="submit">Sign up</button>
+        </form>
 
-      <p>
-        Already have an account? <a href="/login">Log in</a>
-      </p>
+        <p className={styles.footer}>
+          Already have an account? <a href="/login">Log in</a>
+        </p>
+      </div>
     </div>
   );
 }
