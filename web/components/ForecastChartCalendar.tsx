@@ -4,10 +4,11 @@ import { toBaniPoints, findMinimum } from "@/lib/forecast-chart-data";
 import { occurrencesInWindow } from "@/lib/forecast-occurrences";
 import { formatAmount, toBani } from "@/lib/money";
 import type { RecurringRule } from "@/lib/recurring-rules";
+import type { DailyBalance } from "@/lib/analytics";
 import styles from "./ForecastChartCalendar.module.css";
 
 type ForecastChartCalendarProps = {
-  dailyBalances: { date: string; balance: string }[];
+  dailyBalances: DailyBalance[];
   recurringRules: RecurringRule[];
 };
 

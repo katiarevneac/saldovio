@@ -1,12 +1,11 @@
 import { toBani } from "./money";
 import { occurrencesInWindow } from "./forecast-occurrences";
 import type { RecurringRule } from "./recurring-rules";
+import type { DailyBalance } from "./analytics";
 
 export type DailyBalancePoint = { date: string; bani: number };
 
-export function toBaniPoints(
-  dailyBalances: { date: string; balance: string }[]
-): DailyBalancePoint[] {
+export function toBaniPoints(dailyBalances: DailyBalance[]): DailyBalancePoint[] {
   return dailyBalances.map((entry) => ({ date: entry.date, bani: toBani(entry.balance) }));
 }
 

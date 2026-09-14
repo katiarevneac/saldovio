@@ -1,6 +1,7 @@
 "use client";
 
 import type { RecurringRule } from "@/lib/recurring-rules";
+import type { DailyBalance } from "@/lib/analytics";
 import ForecastChartLine from "./ForecastChartLine";
 import ForecastChartWeeks from "./ForecastChartWeeks";
 import ForecastChartCalendar from "./ForecastChartCalendar";
@@ -9,9 +10,9 @@ export type ForecastChartMode = "line" | "weeks" | "calendar";
 
 export type ForecastChartProps = {
   mode: ForecastChartMode;
-  dailyBalances: { date: string; balance: string }[];
+  dailyBalances: DailyBalance[];
   recurringRules: RecurringRule[];
-  afterSeries?: { date: string; balance: string }[];
+  afterSeries?: DailyBalance[];
 };
 
 export default function ForecastChart({

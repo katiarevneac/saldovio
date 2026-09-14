@@ -2,13 +2,15 @@ import "server-only";
 import { ANALYTICS_SERVICE_URL } from "./config";
 import type { RecurringRule } from "./recurring-rules";
 
+export type DailyBalance = { date: string; balance: string };
+
 export type Forecast = {
   forecastBalance: string;
   calculationDate: string;
   windowEndDate: string;
   formulaVersion: string;
   assumptions: string[];
-  dailyBalances: { date: string; balance: string }[];
+  dailyBalances: DailyBalance[];
 };
 
 function todayDateString(): string {

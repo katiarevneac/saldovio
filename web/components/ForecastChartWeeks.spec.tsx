@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import ForecastChartWeeks from "./ForecastChartWeeks";
 import type { RecurringRule } from "@/lib/recurring-rules";
+import type { DailyBalance } from "@/lib/analytics";
 
-function buildDailyBalances(): { date: string; balance: string }[] {
+function buildDailyBalances(): DailyBalance[] {
   const dates = [
     ...Array.from({ length: 21 }, (_, i) => `2026-09-${String(10 + i).padStart(2, "0")}`),
     ...Array.from({ length: 10 }, (_, i) => `2026-10-${String(1 + i).padStart(2, "0")}`),

@@ -3,10 +3,11 @@
 import { toBaniPoints, groupIntoWeeks } from "@/lib/forecast-chart-data";
 import { formatAmount } from "@/lib/money";
 import type { RecurringRule } from "@/lib/recurring-rules";
+import type { DailyBalance } from "@/lib/analytics";
 import styles from "./ForecastChartWeeks.module.css";
 
 type ForecastChartWeeksProps = {
-  dailyBalances: { date: string; balance: string }[];
+  dailyBalances: DailyBalance[];
   recurringRules: RecurringRule[];
 };
 

@@ -11,11 +11,12 @@ import {
 } from "recharts";
 import { toBaniPoints, findMinimum } from "@/lib/forecast-chart-data";
 import { formatAmountValue } from "@/lib/money";
+import type { DailyBalance } from "@/lib/analytics";
 import styles from "./ForecastChartLine.module.css";
 
 type ForecastChartLineProps = {
-  dailyBalances: { date: string; balance: string }[];
-  afterSeries?: { date: string; balance: string }[];
+  dailyBalances: DailyBalance[];
+  afterSeries?: DailyBalance[];
 };
 
 // The line has an "actual" segment (solid) and a "projected" segment
