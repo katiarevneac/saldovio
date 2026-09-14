@@ -1,0 +1,10 @@
+.container {
+  width: 100%;
+  height: 280px;
+}
+
+.tick {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+}
