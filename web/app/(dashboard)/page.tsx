@@ -190,6 +190,11 @@ export default async function DashboardPage() {
 
       <section className={styles.card}>
         <h2 className={styles.cardTitle}>30-day forecast</h2>
+        {forecast && forecast.dailyBalances.length > 0 ? (
+          <p className={styles.forecastHeadline}>
+            {formatAmount(toBani(forecast.forecastBalance))}
+          </p>
+        ) : null}
         <ForecastSection forecast={forecast} recurringRules={recurringRules} />
       </section>
 

@@ -45,4 +45,16 @@ describe("isPathAuthorized", () => {
       isPathAuthorized({ hasSession: true, pathname: "/accounts" })
     ).toBe(true);
   });
+
+  it("blocks an unauthenticated request to /forecast", () => {
+    expect(
+      isPathAuthorized({ hasSession: false, pathname: "/forecast" })
+    ).toBe(false);
+  });
+
+  it("allows an authenticated request to /forecast", () => {
+    expect(
+      isPathAuthorized({ hasSession: true, pathname: "/forecast" })
+    ).toBe(true);
+  });
 });

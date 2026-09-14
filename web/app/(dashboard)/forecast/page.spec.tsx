@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 
 const { authMock } = vi.hoisted(() => ({ authMock: vi.fn() }));
 vi.mock("@/auth", () => ({ auth: authMock }));
@@ -73,6 +73,37 @@ describe("ForecastPage", () => {
     expect(screen.getByText("Balance in 30 days")).toBeInTheDocument();
     expect(screen.getByText("Lowest projected")).toBeInTheDocument();
     expect(await screen.findByRole("group", { name: "Forecast view" })).toBeInTheDocument();
+  });
+
+  it("shows the account-derived total balance as 'Current balance', not dailyBalances[0] (which may already include a same-day rule occurrence)", async () => {
+    getMyAccountsMock.mockResolvedValue([
+      { id: 1, name: "Cont curent", current_balance: "0.00", reference_date: "2026-01-01", balance: "1000.00" },
+    ]);
+    getForecastMock.mockResolvedValue({
+      forecastBalance: "1200.00",
+      calculationDate: "2026-09-14",
+      windowEndDate: "2026-10-14",
+      formulaVersion: "1",
+      assumptions: ["Only confirmed recurring rules are included."],
+      dailyBalances: [
+        { date: "2026-09-14", balance: "1100.00" },
+        { date: "2026-10-14", balance: "1200.00" },
+      ],
+    });
+
+    const ui = await ForecastPage();
+    render(ui);
+
+    // Scope to the "Current balance" card itself — "1.100,00" legitimately
+    // appears elsewhere on the page (it's the "Lowest projected" value here),
+    // so the assertion needs to be about which number this specific card
+    // shows, not about "1.100,00" being absent from the page entirely.
+    const currentBalanceCard = screen.getByText("Current balance")
+      .parentElement!.parentElement!;
+    expect(within(currentBalanceCard).getByText("1.000,00")).toBeInTheDocument();
+    expect(
+      within(currentBalanceCard).queryByText("1.100,00")
+    ).not.toBeInTheDocument();
   });
 
   it("shows the unavailable message and no KPI cards when the fetch fails", async () => {

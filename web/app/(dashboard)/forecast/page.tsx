@@ -70,7 +70,7 @@ export default async function ForecastPage() {
           <KpiCard
             icon={<WalletIcon />}
             label="Current balance"
-            amountBani={points[0]?.bani ?? totalBani}
+            amountBani={totalBani}
             caption={`As of ${forecast.calculationDate}`}
           />
           <KpiCard

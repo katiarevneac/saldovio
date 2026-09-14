@@ -196,6 +196,7 @@ describe("DashboardPage", () => {
     render(ui);
 
     expect(screen.getByText(/Forecast unavailable right now/)).toBeInTheDocument();
+    expect(screen.queryByText("0,00 RON")).not.toBeInTheDocument();
   });
 
   it("shows a forecast-unavailable message when dailyBalances is empty even though the fetch succeeded", async () => {
@@ -214,6 +215,25 @@ describe("DashboardPage", () => {
     render(ui);
 
     expect(screen.getByText(/Forecast unavailable right now/)).toBeInTheDocument();
+    expect(screen.queryByText("0,00 RON")).not.toBeInTheDocument();
+  });
+
+  it("shows the 30-day projected balance headline when the forecast has data", async () => {
+    getMyAccountsMock.mockResolvedValue([]);
+    getTransactionsMock.mockResolvedValue([]);
+    getForecastMock.mockResolvedValue({
+      forecastBalance: "1234.56",
+      calculationDate: "2026-09-10",
+      windowEndDate: "2026-10-10",
+      formulaVersion: "1",
+      assumptions: [],
+      dailyBalances: [{ date: "2026-09-10", balance: "1234.56" }],
+    });
+
+    const ui = await DashboardPage();
+    render(ui);
+
+    expect(screen.getByText("1.234,56 RON")).toBeInTheDocument();
   });
 
   it("renders the add-transaction trigger, with the modal closed by default", async () => {
