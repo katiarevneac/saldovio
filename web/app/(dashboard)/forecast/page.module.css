@@ -1,0 +1,32 @@
+.page {
+  max-width: 1100px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-gap);
+}
+
+.hero {
+  padding: 0 0 6px;
+}
+
+.heroTitle {
+  font-size: 32px;
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+}
+
+.heroSub {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-gap);
+}
+
+.card {
+  composes: card from global;
+}
