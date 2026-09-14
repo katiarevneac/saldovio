@@ -9,7 +9,7 @@ import {
   YAxis,
   ReferenceLine,
 } from "recharts";
-import { toBaniPoints, findMinimum, type DailyBalancePoint } from "@/lib/forecast-chart-data";
+import { toBaniPoints, findMinimum } from "@/lib/forecast-chart-data";
 import { formatAmountValue } from "@/lib/money";
 import styles from "./ForecastChartLine.module.css";
 
@@ -39,7 +39,7 @@ function ForecastTick({ x, y, payload }: { x?: number; y?: number; payload?: { v
 }
 
 function pointDot(testIdPrefix: string) {
-  return function Dot({ cx, cy, payload }: { cx?: number; cy?: number; payload?: DailyBalancePoint }) {
+  return function Dot({ cx, cy, payload }: { cx?: number; cy?: number; payload?: { date: string } }) {
     if (cx === undefined || cy === undefined || !payload) return null;
     return (
       <circle

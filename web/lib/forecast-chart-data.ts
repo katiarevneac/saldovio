@@ -1,4 +1,6 @@
 import { toBani } from "./money";
+import { occurrencesInWindow } from "./forecast-occurrences";
+import type { RecurringRule } from "./recurring-rules";
 
 export type DailyBalancePoint = { date: string; bani: number };
 
@@ -32,25 +34,36 @@ const WEEK_BUCKET_COUNT = 5;
 // Groups a dailyBalances series (any length — real data is always 31
 // points, day 0..30) into exactly 5 buckets. Bucket size is ceil(n/5) so
 // the first 4 buckets are even and the 5th absorbs the remainder — for
-// the real 31-point series that's 7,7,7,7,3.
+// the real 31-point series that's 7,7,7,7,3. (The n<=7 special-case
+// branch below is unchanged from before this fix.)
 //
-// Per-bucket inBani/outBani come from day-over-day deltas *within the
-// full series*, not from re-deriving occurrences: dailyBalances already
-// encodes each day's net change (Story 8's day-by-day walk), so summing
-// consecutive differences is the correct total without reimplementing
-// occurrence/clamping logic a second time in TypeScript for this
-// purpose. Day 0 (the series' first point) has no prior point to diff
-// against — its own possible same-day occurrence is not represented as
-// a separate delta anywhere in the series and is not counted here. This
-// is a deliberate, narrow simplification: it only affects the displayed
-// week-1 in/out breakdown, never `dailyBalances`/`forecastBalance`
-// themselves, which are unaffected and remain exact.
-export function groupIntoWeeks(points: DailyBalancePoint[]): WeekBucket[] {
+// Per-bucket inBani/outBani come from actual rule occurrences within
+// that bucket's date range (via occurrencesInWindow — the same helper
+// Calendar mode uses), not from day-over-day balance deltas. This
+// matches the spec's own wording and avoids a blind spot the delta
+// approach had: a rule landing exactly on day 0 (today) already shows
+// up in dailyBalances[0]'s balance (the backend applies it before
+// emitting the first point) but has no prior point to diff against, so
+// a delta-based method silently drops it from the in/out breakdown
+// while Calendar mode (occurrence-based) still shows it — two modes of
+// one component disagreeing about the same data. Using occurrences
+// directly for both keeps them consistent.
+export function groupIntoWeeks(
+  points: DailyBalancePoint[],
+  recurringRules: RecurringRule[]
+): WeekBucket[] {
   // For small series (≤ 7 days), keep all points in bucket 0. For larger series,
   // distribute evenly across all 5 buckets with ~7 days per bucket.
   const bucketSize =
     points.length <= 7 ? points.length : (Math.ceil(points.length / WEEK_BUCKET_COUNT) || 1);
   const buckets: WeekBucket[] = [];
+
+  const calculationDate = points.length > 0 ? points[0].date : null;
+  const windowEndDate = points.length > 0 ? points[points.length - 1].date : null;
+  const occurrences =
+    calculationDate && windowEndDate
+      ? occurrencesInWindow(recurringRules, calculationDate, windowEndDate)
+      : [];
 
   for (let bucketIndex = 0; bucketIndex < WEEK_BUCKET_COUNT; bucketIndex++) {
     const start = bucketIndex * bucketSize;
@@ -61,19 +74,23 @@ export function groupIntoWeeks(points: DailyBalancePoint[]): WeekBucket[] {
       continue;
     }
 
+    const bucketStartDate = bucketPoints[0].date;
+    const bucketEndDate = bucketPoints[bucketPoints.length - 1].date;
+
     let inBani = 0;
     let outBani = 0;
-    for (let i = 0; i < bucketPoints.length; i++) {
-      const globalIndex = start + i;
-      if (globalIndex === 0) continue; // day 0 has no prior anchor
-      const delta = bucketPoints[i].bani - points[globalIndex - 1].bani;
-      if (delta > 0) inBani += delta;
-      else if (delta < 0) outBani += delta;
+    for (const occurrence of occurrences) {
+      if (occurrence.date >= bucketStartDate && occurrence.date <= bucketEndDate) {
+        const signedBani =
+          toBani(occurrence.rule.amount) * (occurrence.rule.type === "expense" ? -1 : 1);
+        if (signedBani > 0) inBani += signedBani;
+        else if (signedBani < 0) outBani += signedBani;
+      }
     }
 
     buckets.push({
-      startDate: bucketPoints[0].date,
-      endDate: bucketPoints[bucketPoints.length - 1].date,
+      startDate: bucketStartDate,
+      endDate: bucketEndDate,
       inBani,
       outBani,
       endBalanceBani: bucketPoints[bucketPoints.length - 1].bani,

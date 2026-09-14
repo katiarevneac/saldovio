@@ -21,7 +21,7 @@ export default function ForecastChart({
   afterSeries,
 }: ForecastChartProps) {
   if (mode === "weeks") {
-    return <ForecastChartWeeks dailyBalances={dailyBalances} />;
+    return <ForecastChartWeeks dailyBalances={dailyBalances} recurringRules={recurringRules} />;
   }
   if (mode === "calendar") {
     return <ForecastChartCalendar dailyBalances={dailyBalances} recurringRules={recurringRules} />;
