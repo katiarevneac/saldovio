@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   simulatePurchase,
   monthlyRuleOccurrences,
-  TIGHT_THRESHOLD_RATIO,
+  TIGHT_THRESHOLD_NUMERATOR,
+  TIGHT_THRESHOLD_DENOMINATOR,
 } from "./simulator";
 import type { RecurringRule } from "./recurring-rules";
 
@@ -35,11 +36,11 @@ describe("monthlyRuleOccurrences", () => {
     expect(occurrences.map((o) => o.date)).toEqual(["2026-02-28"]);
   });
 
-  it("excludes an occurrence landing exactly on the exclusive window end", () => {
+  it("includes an occurrence landing exactly on the inclusive window start", () => {
     const rule = buildRule({ day_of_month: 1 });
     const occurrences = monthlyRuleOccurrences([rule], "2026-01-01", "2026-02-01");
 
-    expect(occurrences).toEqual([]);
+    expect(occurrences.map((o) => o.date)).toEqual(["2026-01-01"]);
   });
 });
 
@@ -102,7 +103,7 @@ describe("simulatePurchase", () => {
     const result = simulatePurchase({
       currentBalanceBani: 100000,
       recurringRules: [],
-      purchaseBani: 100000 - 100000 * TIGHT_THRESHOLD_RATIO,
+      purchaseBani: 100000 - (100000 * TIGHT_THRESHOLD_NUMERATOR) / TIGHT_THRESHOLD_DENOMINATOR,
       calculationDate: "2026-01-01",
     });
 
@@ -120,5 +121,18 @@ describe("simulatePurchase", () => {
 
     expect(result.minimumAfterBani).toBe(-1);
     expect(result.verdict).toBe("no");
+  });
+
+  it("applies a rule occurring exactly on calculationDate to day 0 of the series", () => {
+    const rule = buildRule({ day_of_month: 14, amount: "300.00", type: "expense" });
+    const result = simulatePurchase({
+      currentBalanceBani: 100000,
+      recurringRules: [rule],
+      purchaseBani: 0,
+      calculationDate: "2026-09-14",
+    });
+
+    const dayZeroBani = Math.round(Number(result.baseSeries[0].balance) * 100);
+    expect(dayZeroBani).toBe(70000);
   });
 });

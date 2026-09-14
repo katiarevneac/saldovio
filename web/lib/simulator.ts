@@ -3,7 +3,10 @@ import { toBani, baniToDecimalString } from "./money";
 import type { DailyBalance } from "./analytics";
 
 export const SIMULATOR_WINDOW_DAYS = 30;
-export const TIGHT_THRESHOLD_RATIO = 0.1;
+// Expressed as an exact integer fraction (not a float) so the verdict
+// comparison never does floating-point arithmetic on money — 1/10 = 10%.
+export const TIGHT_THRESHOLD_NUMERATOR = 1;
+export const TIGHT_THRESHOLD_DENOMINATOR = 10;
 
 export type Verdict = "yes" | "tight" | "no";
 
@@ -89,7 +92,7 @@ export function monthlyRuleOccurrences(
       const candidate = clampedDate(year, month, rule.day_of_month);
 
       if (candidate >= windowEnd) break;
-      if (candidate > windowStart && candidate < windowEnd) {
+      if (candidate >= windowStart) {
         occurrences.push({ date: candidate, rule });
       }
       [year, month] = nextMonth(year, month);
@@ -149,9 +152,13 @@ export function simulatePurchase({
     date = nextDate(date);
   }
 
-  const threshold = currentBalanceBani * TIGHT_THRESHOLD_RATIO;
+  // minimumAfterBani < (currentBalanceBani * NUMERATOR / DENOMINATOR), rewritten
+  // as an integer cross-multiplication to avoid float division/multiplication.
+  const isBelowThreshold =
+    minimumAfterBani * TIGHT_THRESHOLD_DENOMINATOR <
+    currentBalanceBani * TIGHT_THRESHOLD_NUMERATOR;
   const verdict: Verdict =
-    minimumAfterBani < 0 ? "no" : minimumAfterBani < threshold ? "tight" : "yes";
+    minimumAfterBani < 0 ? "no" : isBelowThreshold ? "tight" : "yes";
 
   return {
     calculationDate,
