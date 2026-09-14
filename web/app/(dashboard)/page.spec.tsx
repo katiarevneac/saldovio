@@ -76,6 +76,7 @@ beforeEach(() => {
     windowEndDate: "2026-10-10",
     formulaVersion: "1",
     assumptions: [],
+    dailyBalances: [{ date: "2026-09-10", balance: "0.00" }],
   });
 });
 
@@ -190,6 +191,24 @@ describe("DashboardPage", () => {
     getMyAccountsMock.mockResolvedValue([]);
     getTransactionsMock.mockResolvedValue([]);
     getForecastMock.mockRejectedValue(new Error("network error"));
+
+    const ui = await DashboardPage();
+    render(ui);
+
+    expect(screen.getByText(/Forecast unavailable right now/)).toBeInTheDocument();
+  });
+
+  it("shows a forecast-unavailable message when dailyBalances is empty even though the fetch succeeded", async () => {
+    getMyAccountsMock.mockResolvedValue([]);
+    getTransactionsMock.mockResolvedValue([]);
+    getForecastMock.mockResolvedValue({
+      forecastBalance: "0.00",
+      calculationDate: "2026-09-10",
+      windowEndDate: "2026-10-10",
+      formulaVersion: "1",
+      assumptions: [],
+      dailyBalances: [],
+    });
 
     const ui = await DashboardPage();
     render(ui);

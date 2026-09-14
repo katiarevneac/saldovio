@@ -41,13 +41,15 @@ describe("Sidebar", () => {
     ).not.toHaveAttribute("aria-current");
   });
 
-  it("renders Forecast, Simulator, and Settings as non-interactive, not as links", () => {
+  it("renders Forecast as a real link, and Simulator/Settings as non-interactive", () => {
     usePathnameMock.mockReturnValue("/");
     render(<Sidebar />);
 
-    expect(
-      screen.queryByRole("link", { name: "Forecast" })
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Forecast" })).toHaveAttribute(
+      "href",
+      "/forecast"
+    );
+
     expect(
       screen.queryByRole("link", { name: "Simulator" })
     ).not.toBeInTheDocument();
@@ -55,10 +57,6 @@ describe("Sidebar", () => {
       screen.queryByRole("link", { name: "Settings" })
     ).not.toBeInTheDocument();
 
-    expect(screen.getByText("Forecast")).toHaveAttribute(
-      "aria-disabled",
-      "true"
-    );
     expect(screen.getByText("Simulator")).toHaveAttribute(
       "aria-disabled",
       "true"
@@ -67,6 +65,19 @@ describe("Sidebar", () => {
       "aria-disabled",
       "true"
     );
+  });
+
+  it("marks Forecast active when on /forecast", () => {
+    usePathnameMock.mockReturnValue("/forecast");
+    render(<Sidebar />);
+
+    expect(screen.getByRole("link", { name: "Forecast" })).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+    expect(
+      screen.getByRole("link", { name: "Overview" })
+    ).not.toHaveAttribute("aria-current");
   });
 
   it("marks Accounts active for a nested route like /accounts/new", () => {

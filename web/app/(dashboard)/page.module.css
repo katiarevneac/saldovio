@@ -84,32 +84,6 @@
   font-weight: 700;
 }
 
-.forecastBalance {
-  font-weight: 800;
-  font-size: 26px;
-  letter-spacing: -0.03em;
-  margin-top: 4px;
-}
-
-.forecastMeta {
-  font-size: 12.5px;
-  color: var(--color-text-secondary);
-  margin: 6px 0 0;
-}
-
-.forecastAssumptions {
-  font-size: 11.5px;
-  color: var(--color-text-tertiary);
-  padding-left: 18px;
-  margin: 10px 0 0;
-  line-height: 1.6;
-}
-
-.error {
-  color: var(--color-verdict-no);
-  font-size: 13px;
-}
-
 .simulatorPlaceholder {
   border-style: dashed;
 }

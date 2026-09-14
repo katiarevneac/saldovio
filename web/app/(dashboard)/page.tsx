@@ -8,6 +8,7 @@ import { toBani, baniToDecimalString, formatAmount } from "@/lib/money";
 import { computeMonthlyTotals, currentYearMonth } from "@/lib/overview-metrics";
 import KpiCard from "@/components/KpiCard";
 import AddTransactionModal from "@/components/AddTransactionModal";
+import ForecastSection from "@/components/ForecastSection";
 import { auth } from "@/auth";
 import styles from "./page.module.css";
 
@@ -62,11 +63,10 @@ export default async function DashboardPage() {
   const monthly = computeMonthlyTotals(transactions, currentYearMonth());
 
   let forecast: Forecast | null = null;
-  let forecastError = false;
   try {
     forecast = await getForecast(baniToDecimalString(totalBani), recurringRules);
   } catch {
-    forecastError = true;
+    forecast = null;
   }
 
   const recentTransactions = [...transactions]
@@ -190,25 +190,7 @@ export default async function DashboardPage() {
 
       <section className={styles.card}>
         <h2 className={styles.cardTitle}>30-day forecast</h2>
-        {forecast ? (
-          <>
-            <p className={styles.forecastBalance}>{formatAmount(toBani(forecast.forecastBalance))}</p>
-            <p className={styles.forecastMeta}>
-              As of {forecast.calculationDate}, through {forecast.windowEndDate} (formula v
-              {forecast.formulaVersion})
-            </p>
-            <ul className={styles.forecastAssumptions}>
-              {forecast.assumptions.map((assumption) => (
-                <li key={assumption}>{assumption}</li>
-              ))}
-            </ul>
-          </>
-        ) : forecastError ? (
-          <p className={styles.error}>
-            Forecast unavailable right now — Analytics Service could not be reached. Your balance
-            and transactions above are unaffected.
-          </p>
-        ) : null}
+        <ForecastSection forecast={forecast} recurringRules={recurringRules} />
       </section>
 
       <section className={`${styles.card} ${styles.simulatorPlaceholder}`}>
