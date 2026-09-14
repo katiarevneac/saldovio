@@ -43,7 +43,11 @@ describe("ForecastChartLine", () => {
     render(<ForecastChartLine dailyBalances={dailyBalances} />);
     // The custom tick renders each date's day.month label as a <span>
     // inside a <foreignObject> — a real DOM text node RTL can query,
-    // matching the design's "not SVG text" requirement.
-    expect(screen.getByTestId("forecast-tick-2026-09-10")).toBeInTheDocument();
+    // matching the design's "not SVG text" requirement. XAxis uses
+    // Recharts' default interval="preserveEnd", which auto-skips ticks
+    // based on measured label width; in jsdom (no real text metrics)
+    // that keeps only the last tick, so this asserts on the last date
+    // rather than the first.
+    expect(screen.getByTestId("forecast-tick-2026-09-13")).toBeInTheDocument();
   });
 });

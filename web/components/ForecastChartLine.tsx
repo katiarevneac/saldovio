@@ -71,22 +71,7 @@ export default function ForecastChartLine({ dailyBalances, afterSeries }: Foreca
     <div className={styles.container}>
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={chartData} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
-          {/* interval={0}: force one tick per data point rather than
-              Recharts' default width-based auto-skip ("preserveEnd"),
-              which measures each label via getBoundingClientRect — a
-              DOM API jsdom can't emulate for real text metrics, so
-              Recharts' own measurement is unreliable in tests. Explicit
-              per-day ticks also matches this component's "one point per
-              day" design. For a real 31-point series this renders every
-              day's tick, which can look crowded at narrow widths — a
-              cosmetic follow-up, not addressed by this task. */}
-          <XAxis
-            dataKey="date"
-            tick={<ForecastTick />}
-            axisLine={false}
-            tickLine={false}
-            interval={0}
-          />
+          <XAxis dataKey="date" tick={<ForecastTick />} axisLine={false} tickLine={false} />
           <YAxis
             tickFormatter={(value: number) => formatAmountValue(value)}
             width={64}
