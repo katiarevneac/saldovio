@@ -1,0 +1,40 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 4px;
+  margin-bottom: var(--space-gap);
+}
+
+.cell {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: var(--color-accent-tint-bg);
+  position: relative;
+}
+
+.cell[data-minimum="true"] {
+  outline: 2px solid var(--color-verdict-no);
+  outline-offset: 1px;
+}
+
+.ruleList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+}
+
+.ruleCard {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  padding: 8px 12px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ruleAmount {
+  composes: tabularNums from global;
+  font-weight: 700;
+}
