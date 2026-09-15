@@ -135,4 +135,26 @@ describe("simulatePurchase", () => {
     const dayZeroBani = Math.round(Number(result.baseSeries[0].balance) * 100);
     expect(dayZeroBani).toBe(70000);
   });
+
+  it("uses an explicit windowEndDate instead of the default 30-day window when provided", () => {
+    const rule = buildRule({ day_of_month: 15, amount: "200.00", type: "expense" });
+    const result = simulatePurchase({
+      currentBalanceBani: 100000,
+      recurringRules: [rule],
+      purchaseBani: 0,
+      calculationDate: "2026-01-01",
+      windowEndDate: "2026-02-20",
+    });
+
+    expect(result.windowEndDate).toBe("2026-02-20");
+    expect(result.baseSeries[result.baseSeries.length - 1].date).toBe("2026-02-20");
+
+    // The rule occurs on both 2026-01-15 and 2026-02-15 inside this extended
+    // window; the default 30-day window (ending 2026-01-31) would only catch
+    // the first occurrence.
+    const finalBani = Math.round(
+      Number(result.baseSeries[result.baseSeries.length - 1].balance) * 100
+    );
+    expect(finalBani).toBe(100000 - 20000 - 20000);
+  });
 });

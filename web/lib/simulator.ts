@@ -114,14 +114,16 @@ export function simulatePurchase({
   recurringRules,
   purchaseBani,
   calculationDate = todayDateString(),
+  windowEndDate,
 }: {
   currentBalanceBani: number;
   recurringRules: RecurringRule[];
   purchaseBani: number;
   calculationDate?: string;
+  windowEndDate?: string;
 }): SimulatorResult {
-  const windowEndDate = addWindowDays(calculationDate, SIMULATOR_WINDOW_DAYS);
-  const occurrences = monthlyRuleOccurrences(recurringRules, calculationDate, windowEndDate);
+  const resolvedWindowEndDate = windowEndDate ?? addWindowDays(calculationDate, SIMULATOR_WINDOW_DAYS);
+  const occurrences = monthlyRuleOccurrences(recurringRules, calculationDate, resolvedWindowEndDate);
 
   const deltasByDate = new Map<string, number>();
   for (const { date, rule } of occurrences) {
@@ -148,7 +150,7 @@ export function simulatePurchase({
       minimumAfterDate = date;
     }
 
-    if (date === windowEndDate) break;
+    if (date === resolvedWindowEndDate) break;
     date = nextDate(date);
   }
 
@@ -162,7 +164,7 @@ export function simulatePurchase({
 
   return {
     calculationDate,
-    windowEndDate,
+    windowEndDate: resolvedWindowEndDate,
     baseSeries,
     afterSeries,
     minimumAfterBani,
