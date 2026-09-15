@@ -7,6 +7,8 @@ import { getForecast, type Forecast } from "@/lib/analytics";
 import { toBani, baniToDecimalString, formatAmount } from "@/lib/money";
 import { computeMonthlyTotals, currentYearMonth } from "@/lib/overview-metrics";
 import { todayDateString } from "@/lib/simulator";
+import { getMySettings } from "@/lib/settings";
+import { computeWindowEnd } from "@/lib/forecast-window";
 import KpiCard from "@/components/KpiCard";
 import AddTransactionModal from "@/components/AddTransactionModal";
 import ForecastSection from "@/components/ForecastSection";
@@ -55,10 +57,11 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const [accounts, recurringRules, transactions] = await Promise.all([
+  const [accounts, recurringRules, transactions, settings] = await Promise.all([
     getMyAccounts(),
     getMyRecurringRules(),
     getTransactions(),
+    getMySettings(),
   ]);
 
   const totalBani = accounts.reduce((sum, account) => sum + toBani(account.balance), 0);
@@ -66,7 +69,8 @@ export default async function DashboardPage() {
 
   let forecast: Forecast | null = null;
   try {
-    forecast = await getForecast(baniToDecimalString(totalBani), recurringRules);
+    const windowEndDate = computeWindowEnd(todayDateString(), settings.payday, settings.horizon_days);
+    forecast = await getForecast(baniToDecimalString(totalBani), recurringRules, windowEndDate);
   } catch {
     forecast = null;
   }

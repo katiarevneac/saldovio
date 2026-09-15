@@ -4,6 +4,9 @@ import { getMyRecurringRules } from "@/lib/recurring-rules";
 import { getForecast, type Forecast } from "@/lib/analytics";
 import { toBani, baniToDecimalString } from "@/lib/money";
 import { toBaniPoints, findMinimum } from "@/lib/forecast-chart-data";
+import { getMySettings } from "@/lib/settings";
+import { computeWindowEnd } from "@/lib/forecast-window";
+import { todayDateString } from "@/lib/simulator";
 import ForecastSection from "@/components/ForecastSection";
 import KpiCard from "@/components/KpiCard";
 import { auth } from "@/auth";
@@ -41,16 +44,18 @@ export default async function ForecastPage() {
     redirect("/login");
   }
 
-  const [accounts, recurringRules] = await Promise.all([
+  const [accounts, recurringRules, settings] = await Promise.all([
     getMyAccounts(),
     getMyRecurringRules(),
+    getMySettings(),
   ]);
 
   const totalBani = accounts.reduce((sum, account) => sum + toBani(account.balance), 0);
 
   let forecast: Forecast | null = null;
   try {
-    forecast = await getForecast(baniToDecimalString(totalBani), recurringRules);
+    const windowEndDate = computeWindowEnd(todayDateString(), settings.payday, settings.horizon_days);
+    forecast = await getForecast(baniToDecimalString(totalBani), recurringRules, windowEndDate);
   } catch {
     forecast = null;
   }

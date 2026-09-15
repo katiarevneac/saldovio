@@ -26,7 +26,8 @@ function todayDateString(): string {
 // gathered this user's data from Finance API in the first place.
 export async function getForecast(
   currentBalance: string,
-  recurringRules: RecurringRule[]
+  recurringRules: RecurringRule[],
+  windowEndDate: string
 ): Promise<Forecast> {
   const response = await fetch(`${ANALYTICS_SERVICE_URL}/forecast`, {
     method: "POST",
@@ -40,6 +41,7 @@ export async function getForecast(
         dayOfMonth: rule.day_of_month,
       })),
       calculationDate: todayDateString(),
+      windowEndDate,
     }),
   });
 

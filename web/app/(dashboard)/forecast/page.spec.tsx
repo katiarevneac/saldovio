@@ -24,6 +24,9 @@ vi.mock("@/lib/recurring-rules", () => ({
 const { getForecastMock } = vi.hoisted(() => ({ getForecastMock: vi.fn() }));
 vi.mock("@/lib/analytics", () => ({ getForecast: getForecastMock }));
 
+const { getMySettingsMock } = vi.hoisted(() => ({ getMySettingsMock: vi.fn() }));
+vi.mock("@/lib/settings", () => ({ getMySettings: getMySettingsMock }));
+
 import ForecastPage from "./page";
 
 beforeEach(() => {
@@ -32,12 +35,14 @@ beforeEach(() => {
   getMyAccountsMock.mockReset();
   getMyRecurringRulesMock.mockReset();
   getForecastMock.mockReset();
+  getMySettingsMock.mockReset();
 
   authMock.mockResolvedValue({ user: { id: "1", email: "test@example.com" } });
   getMyAccountsMock.mockResolvedValue([
     { id: 1, name: "Cont curent", current_balance: "0.00", reference_date: "2026-01-01", balance: "1000.00" },
   ]);
   getMyRecurringRulesMock.mockResolvedValue([]);
+  getMySettingsMock.mockResolvedValue({ essential_spend: null, payday: null, horizon_days: 30 });
 });
 
 describe("ForecastPage", () => {

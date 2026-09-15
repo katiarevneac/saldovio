@@ -46,6 +46,13 @@ vi.mock("@/lib/analytics", () => ({
   getForecast: getForecastMock,
 }));
 
+const { getMySettingsMock } = vi.hoisted(() => ({
+  getMySettingsMock: vi.fn(),
+}));
+vi.mock("@/lib/settings", () => ({
+  getMySettings: getMySettingsMock,
+}));
+
 // TransactionForm (rendered inside DashboardPage's JSX) statically imports
 // "@/app/actions", which imports "@/lib/internal-auth" (`import
 // "server-only"`). Mocking the action module keeps that real server-only
@@ -65,6 +72,7 @@ beforeEach(() => {
   getMyRecurringRulesMock.mockReset();
   getTransactionsMock.mockReset();
   getForecastMock.mockReset();
+  getMySettingsMock.mockReset();
 
   authMock.mockResolvedValue({
     user: { id: "1", email: "test@example.com" },
@@ -78,6 +86,7 @@ beforeEach(() => {
     assumptions: [],
     dailyBalances: [{ date: "2026-09-10", balance: "0.00" }],
   });
+  getMySettingsMock.mockResolvedValue({ essential_spend: null, payday: null, horizon_days: 30 });
 });
 
 describe("DashboardPage", () => {
