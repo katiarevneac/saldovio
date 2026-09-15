@@ -6,6 +6,7 @@ import { getTransactions } from "@/lib/transactions";
 import { getForecast, type Forecast } from "@/lib/analytics";
 import { toBani, baniToDecimalString, formatAmount } from "@/lib/money";
 import { computeMonthlyTotals, currentYearMonth } from "@/lib/overview-metrics";
+import { todayDateString } from "@/lib/simulator";
 import KpiCard from "@/components/KpiCard";
 import AddTransactionModal from "@/components/AddTransactionModal";
 import ForecastSection from "@/components/ForecastSection";
@@ -201,7 +202,11 @@ export default async function DashboardPage() {
 
       <section className={styles.card}>
         <h2 className={styles.cardTitle}>Simulator</h2>
-        <SimulatorCard currentBalanceBani={totalBani} recurringRules={recurringRules} />
+        <SimulatorCard
+          currentBalanceBani={totalBani}
+          recurringRules={recurringRules}
+          calculationDate={todayDateString()}
+        />
       </section>
     </div>
   );

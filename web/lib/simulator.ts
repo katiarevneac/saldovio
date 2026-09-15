@@ -102,7 +102,7 @@ export function monthlyRuleOccurrences(
   return occurrences.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 }
 
-function todayDateString(): string {
+export function todayDateString(): string {
   const now = new Date();
   return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
 }

@@ -73,6 +73,15 @@ describe("SimulatorPanel", () => {
     expect(screen.getByRole("columnheader", { name: "With" })).toBeInTheDocument();
   });
 
+  it("allows typing a decimal amount without it being reset", () => {
+    render(
+      <SimulatorPanel currentBalanceBani={100000} recurringRules={[]} calculationDate="2026-09-14" />
+    );
+    const input = screen.getByLabelText("Purchase amount");
+    fireEvent.change(input, { target: { value: "150.5" } });
+    expect(input).toHaveValue(150.5);
+  });
+
   it("switches to the overlaid view and renders the chart", async () => {
     const { container } = render(
       <SimulatorPanel

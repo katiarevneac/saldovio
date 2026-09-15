@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getMyAccounts } from "@/lib/accounts";
 import { getMyRecurringRules } from "@/lib/recurring-rules";
 import { toBani } from "@/lib/money";
+import { todayDateString } from "@/lib/simulator";
 import SimulatorPanel from "@/components/SimulatorPanel";
 import { auth } from "@/auth";
 import styles from "./page.module.css";
@@ -45,6 +46,7 @@ export default async function SimulatorPage({
           currentBalanceBani={totalBani}
           recurringRules={recurringRules}
           initialAmountBani={initialAmountBani}
+          calculationDate={todayDateString()}
         />
       </section>
     </div>

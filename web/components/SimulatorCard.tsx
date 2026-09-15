@@ -19,26 +19,34 @@ const VERDICT_LABEL: Record<Verdict, string> = {
 type SimulatorCardProps = {
   currentBalanceBani: number;
   recurringRules: RecurringRule[];
+  calculationDate?: string;
 };
 
 export default function SimulatorCard({
   currentBalanceBani,
   recurringRules,
+  calculationDate,
 }: SimulatorCardProps) {
-  const [amountBani, setAmountBani] = useState(DEFAULT_AMOUNT_BANI);
+  const [amountText, setAmountText] = useState(String(DEFAULT_AMOUNT_BANI / 100));
   const sliderMaxBani = Math.max(currentBalanceBani * 2, 1000000);
 
+  const amountBani = useMemo(() => {
+    const parsed = toBani(amountText || "0");
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  }, [amountText]);
+
   const result = useMemo(
-    () => simulatePurchase({ currentBalanceBani, recurringRules, purchaseBani: amountBani }),
-    [currentBalanceBani, recurringRules, amountBani]
+    () =>
+      simulatePurchase({
+        currentBalanceBani,
+        recurringRules,
+        purchaseBani: amountBani,
+        calculationDate,
+      }),
+    [currentBalanceBani, recurringRules, amountBani, calculationDate]
   );
 
   const afterEndBani = toBani(result.afterSeries[result.afterSeries.length - 1].balance);
-
-  function handleAmountInputChange(value: string) {
-    const parsed = toBani(value || "0");
-    setAmountBani(Number.isFinite(parsed) && parsed >= 0 ? parsed : 0);
-  }
 
   return (
     <div className={styles.card}>
@@ -47,9 +55,9 @@ export default function SimulatorCard({
           type="number"
           aria-label="Purchase amount"
           min={0}
-          step={1}
-          value={amountBani / 100}
-          onChange={(event) => handleAmountInputChange(event.target.value)}
+          step="0.01"
+          value={amountText}
+          onChange={(event) => setAmountText(event.target.value)}
           className={styles.amountInput}
         />
         <input
@@ -59,7 +67,7 @@ export default function SimulatorCard({
           max={sliderMaxBani}
           step={100}
           value={amountBani}
-          onChange={(event) => setAmountBani(Number(event.target.value))}
+          onChange={(event) => setAmountText(String(Number(event.target.value) / 100))}
           className={styles.slider}
         />
       </div>

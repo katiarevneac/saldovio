@@ -48,9 +48,14 @@ export default function SimulatorPanel({
   initialAmountBani = 0,
   calculationDate,
 }: SimulatorPanelProps) {
-  const [amountBani, setAmountBani] = useState(Math.max(0, initialAmountBani));
+  const [amountText, setAmountText] = useState(String(Math.max(0, initialAmountBani) / 100));
   const [note, setNote] = useState("");
   const [view, setView] = useState<View>("side-by-side");
+
+  const amountBani = useMemo(() => {
+    const parsed = toBani(amountText || "0");
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  }, [amountText]);
 
   const sliderMaxBani = Math.max(currentBalanceBani * 2, 1000000);
 
@@ -69,11 +74,6 @@ export default function SimulatorPanel({
   const baseEndBani = toBani(result.baseSeries[result.baseSeries.length - 1].balance);
   const afterEndBani = toBani(result.afterSeries[result.afterSeries.length - 1].balance);
 
-  function handleAmountInputChange(value: string) {
-    const parsed = toBani(value || "0");
-    setAmountBani(Number.isFinite(parsed) && parsed >= 0 ? parsed : 0);
-  }
-
   return (
     <div className={styles.panel}>
       <div className={styles.amountControls}>
@@ -86,9 +86,9 @@ export default function SimulatorPanel({
             id="simulator-amount"
             type="number"
             min={0}
-            step={1}
-            value={amountBani / 100}
-            onChange={(event) => handleAmountInputChange(event.target.value)}
+            step="0.01"
+            value={amountText}
+            onChange={(event) => setAmountText(event.target.value)}
             className={styles.amountInput}
           />
         </div>
@@ -99,7 +99,7 @@ export default function SimulatorPanel({
           max={sliderMaxBani}
           step={100}
           value={amountBani}
-          onChange={(event) => setAmountBani(Number(event.target.value))}
+          onChange={(event) => setAmountText(String(Number(event.target.value) / 100))}
           className={styles.slider}
         />
         <div className={styles.chipRow} role="group" aria-label="Preset amounts">
@@ -109,7 +109,7 @@ export default function SimulatorPanel({
               type="button"
               className={styles.chip}
               aria-pressed={amountBani === preset.bani}
-              onClick={() => setAmountBani(preset.bani)}
+              onClick={() => setAmountText(String(preset.bani / 100))}
             >
               {preset.label}
             </button>
@@ -149,7 +149,7 @@ export default function SimulatorPanel({
       {view === "side-by-side" ? (
         <div className={styles.sideBySide}>
           <div className={styles.statCard}>
-            <h3 className={styles.statTitle}>Without this purchase</h3>
+            <h2 className={styles.statTitle}>Without this purchase</h2>
             <p className={styles.statRow}>
               <span>Balance in 30 days</span>
               <span>{formatAmount(baseEndBani)}</span>
@@ -160,7 +160,7 @@ export default function SimulatorPanel({
             </p>
           </div>
           <div className={styles.statCard}>
-            <h3 className={styles.statTitle}>With this purchase</h3>
+            <h2 className={styles.statTitle}>With this purchase</h2>
             <p className={styles.statRow}>
               <span>Balance in 30 days</span>
               <span>{formatAmount(afterEndBani)}</span>
