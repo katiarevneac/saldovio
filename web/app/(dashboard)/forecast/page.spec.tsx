@@ -28,6 +28,7 @@ const { getMySettingsMock } = vi.hoisted(() => ({ getMySettingsMock: vi.fn() }))
 vi.mock("@/lib/settings", () => ({ getMySettings: getMySettingsMock }));
 
 import ForecastPage from "./page";
+import { computeWindowEnd } from "@/lib/forecast-window";
 
 beforeEach(() => {
   authMock.mockReset();
@@ -75,7 +76,7 @@ describe("ForecastPage", () => {
 
     expect(screen.getByRole("heading", { name: "Forecast" })).toBeInTheDocument();
     expect(screen.getByText("Current balance")).toBeInTheDocument();
-    expect(screen.getByText("Balance in 30 days")).toBeInTheDocument();
+    expect(screen.getByText("Projected balance")).toBeInTheDocument();
     expect(screen.getByText("Lowest projected")).toBeInTheDocument();
     expect(await screen.findByRole("group", { name: "Forecast view" })).toBeInTheDocument();
   });
@@ -109,6 +110,25 @@ describe("ForecastPage", () => {
     expect(
       within(currentBalanceCard).queryByText("1.100,00")
     ).not.toBeInTheDocument();
+  });
+
+  it("computes windowEndDate from settings.payday and settings.horizon_days, in that order, and passes it to getForecast", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 15));
+    try {
+      getMySettingsMock.mockResolvedValue({ essential_spend: null, payday: 20, horizon_days: 45 });
+
+      await ForecastPage();
+
+      const expectedWindowEnd = computeWindowEnd("2026-09-15", 20, 45);
+      expect(getForecastMock).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.anything(),
+        expectedWindowEnd
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("shows the unavailable message and no KPI cards when the fetch fails", async () => {

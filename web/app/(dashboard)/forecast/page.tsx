@@ -44,16 +44,16 @@ export default async function ForecastPage() {
     redirect("/login");
   }
 
-  const [accounts, recurringRules, settings] = await Promise.all([
+  const [accounts, recurringRules] = await Promise.all([
     getMyAccounts(),
     getMyRecurringRules(),
-    getMySettings(),
   ]);
 
   const totalBani = accounts.reduce((sum, account) => sum + toBani(account.balance), 0);
 
   let forecast: Forecast | null = null;
   try {
+    const settings = await getMySettings();
     const windowEndDate = computeWindowEnd(todayDateString(), settings.payday, settings.horizon_days);
     forecast = await getForecast(baniToDecimalString(totalBani), recurringRules, windowEndDate);
   } catch {
@@ -67,7 +67,7 @@ export default async function ForecastPage() {
     <div className={styles.page}>
       <div className={styles.hero}>
         <h1 className={styles.heroTitle}>Forecast</h1>
-        <p className={styles.heroSub}>Your projected balance over the next 30 days.</p>
+        <p className={styles.heroSub}>Your projected balance over the forecast window.</p>
       </div>
 
       {forecast && forecast.dailyBalances.length > 0 ? (
@@ -80,7 +80,7 @@ export default async function ForecastPage() {
           />
           <KpiCard
             icon={<BarChartIcon />}
-            label="Balance in 30 days"
+            label="Projected balance"
             amountBani={toBani(forecast.forecastBalance)}
             caption={`Projected for ${forecast.windowEndDate}`}
           />

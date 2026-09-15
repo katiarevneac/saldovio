@@ -64,6 +64,7 @@ vi.mock("@/app/actions", () => ({
 }));
 
 import DashboardPage from "./page";
+import { computeWindowEnd } from "@/lib/forecast-window";
 
 beforeEach(() => {
   authMock.mockReset();
@@ -243,6 +244,27 @@ describe("DashboardPage", () => {
     render(ui);
 
     expect(screen.getByText("1.234,56 RON")).toBeInTheDocument();
+  });
+
+  it("computes windowEndDate from settings.payday and settings.horizon_days, in that order, and passes it to getForecast", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 15));
+    try {
+      getMyAccountsMock.mockResolvedValue([]);
+      getTransactionsMock.mockResolvedValue([]);
+      getMySettingsMock.mockResolvedValue({ essential_spend: null, payday: 20, horizon_days: 45 });
+
+      await DashboardPage();
+
+      const expectedWindowEnd = computeWindowEnd("2026-09-15", 20, 45);
+      expect(getForecastMock).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.anything(),
+        expectedWindowEnd
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("renders the add-transaction trigger, with the modal closed by default", async () => {

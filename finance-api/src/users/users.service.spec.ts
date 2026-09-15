@@ -111,4 +111,12 @@ describe('UsersService', () => {
 
     expect(settings).toEqual({ essential_spend: null, payday: null, horizon_days: 30 });
   });
+
+  it('rejects an out-of-range horizonDays at the database CHECK constraint (belt-and-suspenders below the Zod validation layer)', async () => {
+    const user = await service.create({ email: testEmail, password: 'password123' });
+
+    await expect(
+      prisma.user.update({ where: { id: user.id }, data: { horizonDays: 400 } }),
+    ).rejects.toThrow();
+  });
 });

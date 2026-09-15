@@ -29,5 +29,6 @@ describe('UpdateSettingsSchema', () => {
     expect(UpdateSettingsSchema.safeParse({ horizonDays: 0 }).success).toBe(false);
     expect(UpdateSettingsSchema.safeParse({ horizonDays: -5 }).success).toBe(false);
     expect(UpdateSettingsSchema.safeParse({ horizonDays: null }).success).toBe(false);
+    expect(UpdateSettingsSchema.safeParse({ horizonDays: 366 }).success).toBe(false);
   });
 });

@@ -45,6 +45,8 @@ class ForecastRequest(CamelModel):
     def _window_end_not_before_calculation_date(self) -> "ForecastRequest":
         if self.window_end_date < self.calculation_date:
             raise ValueError("window_end_date must not be before calculation_date")
+        if (self.window_end_date - self.calculation_date).days > 366:
+            raise ValueError("window_end_date must not be more than 366 days after calculation_date")
         return self
 
 

@@ -166,3 +166,8 @@ def test_window_end_date_is_configurable_not_hardcoded_30_days():
 def test_window_end_date_before_calculation_date_is_rejected():
     with pytest.raises(ValidationError):
         _request("1000.00", [], date(2026, 9, 9), window_end_date=date(2026, 9, 1))
+
+
+def test_window_end_date_more_than_366_days_out_is_rejected():
+    with pytest.raises(ValidationError):
+        _request("1000.00", [], date(2026, 9, 9), window_end_date=date(2028, 1, 1))

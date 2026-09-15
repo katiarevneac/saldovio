@@ -57,11 +57,10 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const [accounts, recurringRules, transactions, settings] = await Promise.all([
+  const [accounts, recurringRules, transactions] = await Promise.all([
     getMyAccounts(),
     getMyRecurringRules(),
     getTransactions(),
-    getMySettings(),
   ]);
 
   const totalBani = accounts.reduce((sum, account) => sum + toBani(account.balance), 0);
@@ -69,6 +68,7 @@ export default async function DashboardPage() {
 
   let forecast: Forecast | null = null;
   try {
+    const settings = await getMySettings();
     const windowEndDate = computeWindowEnd(todayDateString(), settings.payday, settings.horizon_days);
     forecast = await getForecast(baniToDecimalString(totalBani), recurringRules, windowEndDate);
   } catch {
@@ -195,7 +195,7 @@ export default async function DashboardPage() {
       </section>
 
       <section className={styles.card}>
-        <h2 className={styles.cardTitle}>30-day forecast</h2>
+        <h2 className={styles.cardTitle}>Forecast</h2>
         {forecast && forecast.dailyBalances.length > 0 ? (
           <p className={styles.forecastHeadline}>
             {formatAmount(toBani(forecast.forecastBalance))}
