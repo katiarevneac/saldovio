@@ -1,5 +1,8 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
+
+import pytest
+from pydantic import ValidationError
 
 from forecast import (
     ForecastRequest,
@@ -9,11 +12,12 @@ from forecast import (
 )
 
 
-def _request(current_balance, rules, calculation_date):
+def _request(current_balance, rules, calculation_date, window_end_date=None):
     return ForecastRequest(
         current_balance=Decimal(current_balance),
         recurring_rules=rules,
         calculation_date=calculation_date,
+        window_end_date=window_end_date or calculation_date + timedelta(days=30),
     )
 
 
@@ -148,3 +152,17 @@ def test_same_day_rules_accumulate_instead_of_overwriting():
     assert by_date[date(2026, 9, 14)] == Decimal("1000.00")
     assert by_date[date(2026, 9, 15)] == Decimal("1300.00")
     assert result.forecast_balance == Decimal("1300.00")
+
+
+def test_window_end_date_is_configurable_not_hardcoded_30_days():
+    result = compute_forecast(
+        _request("1000.00", [], date(2026, 9, 9), window_end_date=date(2026, 9, 19))
+    )
+    assert result.window_end_date == date(2026, 9, 19)
+    assert len(result.daily_balances) == 11
+    assert result.daily_balances[-1].date == date(2026, 9, 19)
+
+
+def test_window_end_date_before_calculation_date_is_rejected():
+    with pytest.raises(ValidationError):
+        _request("1000.00", [], date(2026, 9, 9), window_end_date=date(2026, 9, 1))

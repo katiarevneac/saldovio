@@ -1,4 +1,4 @@
-"""Pure 30-day balance forecast calculator.
+"""Pure balance forecast calculator.
 
 Deliberately has no database access and makes no outbound network
 calls — web/ collects the current balance and recurring rules from
@@ -6,6 +6,12 @@ Finance API and sends them here as input. This keeps Analytics Service
 a dependency-free calculator: if it goes down, nothing else in the
 app breaks (CLAUDE.md — "an unavailable forecast must never render as
 zero").
+
+The forecast window's length is not this service's decision — web/
+computes window_end_date (fixed 30 days today, configurable per-user
+once Settings ships) and sends it as input, same as current_balance
+and recurring_rules. This service only knows "the window I was told
+to compute," not any particular number of days.
 """
 
 from calendar import monthrange
@@ -13,11 +19,10 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 from pydantic.alias_generators import to_camel
 
 FORMULA_VERSION = "1.0"
-FORECAST_WINDOW_DAYS = 30
 
 
 class CamelModel(BaseModel):
@@ -34,6 +39,13 @@ class ForecastRequest(CamelModel):
     current_balance: Decimal
     recurring_rules: list[RecurringRuleInput]
     calculation_date: date
+    window_end_date: date
+
+    @model_validator(mode="after")
+    def _window_end_not_before_calculation_date(self) -> "ForecastRequest":
+        if self.window_end_date < self.calculation_date:
+            raise ValueError("window_end_date must not be before calculation_date")
+        return self
 
 
 class DailyBalance(CamelModel):
@@ -83,7 +95,7 @@ def _occurrences_in_window(
 
 
 def compute_forecast(request: ForecastRequest) -> ForecastResponse:
-    window_end = request.calculation_date + timedelta(days=FORECAST_WINDOW_DAYS)
+    window_end = request.window_end_date
 
     deltas_by_date: dict[date, Decimal] = {}
     for rule in request.recurring_rules:
@@ -114,7 +126,7 @@ def compute_forecast(request: ForecastRequest) -> ForecastResponse:
         assumptions=[
             "Includes only confirmed recurring rules (monthly frequency).",
             "One-off irregular past expenses are not statistically extrapolated.",
-            "Interval convention: [calculation_date, calculation_date + 30 days).",
+            f"Interval convention: [{request.calculation_date.isoformat()}, {window_end.isoformat()}).",
             "Daily series covers [calculation_date, window_end_date] inclusive; the final point carries no occurrence, since the rule interval ends exclusively at window_end_date.",
         ],
         daily_balances=daily_balances,
