@@ -15,7 +15,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Transactions", href: "/transactions" },
   { label: "Accounts", href: "/accounts" },
   { label: "Forecast", href: "/forecast" },
-  { label: "Simulator", href: "/simulator", disabled: true },
+  { label: "Simulator", href: "/simulator" },
   { label: "Settings", href: "/settings", disabled: true },
 ];
 

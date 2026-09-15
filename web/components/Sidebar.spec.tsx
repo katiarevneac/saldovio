@@ -41,7 +41,7 @@ describe("Sidebar", () => {
     ).not.toHaveAttribute("aria-current");
   });
 
-  it("renders Forecast as a real link, and Simulator/Settings as non-interactive", () => {
+  it("renders Forecast and Simulator as real links, and Settings as non-interactive", () => {
     usePathnameMock.mockReturnValue("/");
     render(<Sidebar />);
 
@@ -49,22 +49,31 @@ describe("Sidebar", () => {
       "href",
       "/forecast"
     );
+    expect(screen.getByRole("link", { name: "Simulator" })).toHaveAttribute(
+      "href",
+      "/simulator"
+    );
 
-    expect(
-      screen.queryByRole("link", { name: "Simulator" })
-    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: "Settings" })
     ).not.toBeInTheDocument();
-
-    expect(screen.getByText("Simulator")).toHaveAttribute(
-      "aria-disabled",
-      "true"
-    );
     expect(screen.getByText("Settings")).toHaveAttribute(
       "aria-disabled",
       "true"
     );
+  });
+
+  it("marks Simulator active when on /simulator", () => {
+    usePathnameMock.mockReturnValue("/simulator");
+    render(<Sidebar />);
+
+    expect(screen.getByRole("link", { name: "Simulator" })).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+    expect(
+      screen.getByRole("link", { name: "Overview" })
+    ).not.toHaveAttribute("aria-current");
   });
 
   it("marks Forecast active when on /forecast", () => {
