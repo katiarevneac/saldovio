@@ -1,0 +1,158 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.amountControls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.amountLabel,
+.noteLabel {
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+}
+
+.amountRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.currency {
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+}
+
+.amountInput,
+.noteInput {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  padding: 8px 10px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+}
+
+.amountInput {
+  width: 140px;
+}
+
+.slider {
+  width: 100%;
+}
+
+.chipRow {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  padding: 6px 12px;
+  font-size: 12.5px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--color-accent);
+  color: var(--color-accent-on);
+  border-color: var(--color-accent);
+  font-weight: 700;
+}
+
+.verdict {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-control);
+  font-weight: 700;
+  font-size: 14px;
+  border: 1px solid transparent;
+}
+
+.verdict-yes {
+  color: var(--color-verdict-yes);
+  border-color: var(--color-verdict-yes);
+}
+
+.verdict-tight {
+  color: var(--color-verdict-tight);
+  border-color: var(--color-verdict-tight);
+}
+
+.verdict-no {
+  color: var(--color-verdict-no);
+  border-color: var(--color-verdict-no);
+}
+
+.viewSwitcher {
+  display: flex;
+  gap: 6px;
+}
+
+.viewButton {
+  padding: 6px 12px;
+  font-size: 12.5px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.viewButton[aria-pressed="true"] {
+  background: var(--color-accent);
+  color: var(--color-accent-on);
+  border-color: var(--color-accent);
+  font-weight: 700;
+}
+
+.sideBySide {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.statCard {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  padding: 14px;
+}
+
+.statTitle {
+  margin: 0 0 8px;
+  font-size: 13.5px;
+}
+
+.statRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin: 4px 0;
+}
+
+.deltaTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.deltaTable th,
+.deltaTable td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.diffNegative {
+  color: var(--color-verdict-no);
+}
+
+.diffPositive {
+  color: var(--color-accent);
+}
