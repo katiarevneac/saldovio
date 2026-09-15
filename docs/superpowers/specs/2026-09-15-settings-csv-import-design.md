@@ -31,6 +31,14 @@ CSV import is also roadmap stage 7 (brief §19) — the last unbuilt MVP stage b
 
 ## Architecture
 
+### Epic breakdown (sequential stories)
+
+1. Schema (Settings fields + `importHash`) + Settings API (`GET`/`PATCH /users/me/settings`) + `forecast-window.ts` + Analytics Service `window_end_date`
+2. `/settings` UI (Profile + Forecast assumptions cards) + Sidebar link enabled
+3. Simulator wiring — essential-spend verdict threshold + payday/horizon window boundary
+4. CSV import backend (Revolut parser, `/transactions/import/preview`+`/commit`, dedupe hash)
+5. CSV import UI (Settings Data card modal) + Export + Delete account
+
 ### Schema (new Prisma migration)
 
 - `User`: `+essentialSpendBani Int?`, `+payday Int?` (1-31), `+horizonDays Int @default(30)`.
