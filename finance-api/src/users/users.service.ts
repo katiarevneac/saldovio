@@ -2,10 +2,17 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { todayDateOnly } from '../common/serialization.js';
+import { todayDateOnly, toDecimalString } from '../common/serialization.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
+import { UpdateSettingsDto } from './dto/update-settings.dto.js';
 
 const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
+
+type SettingsRow = {
+  essentialSpend: Prisma.Decimal | null;
+  payday: number | null;
+  horizonDays: number;
+};
 
 @Injectable()
 export class UsersService {
@@ -46,5 +53,41 @@ export class UsersService {
       }
       throw error;
     }
+  }
+
+  async getSettings(userId: number) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { essentialSpend: true, payday: true, horizonDays: true },
+    });
+    return this.serializeSettings(user);
+  }
+
+  async updateSettings(userId: number, dto: UpdateSettingsDto) {
+    const data: Prisma.UserUpdateInput = {};
+    if (dto.essentialSpend !== undefined) {
+      data.essentialSpend = dto.essentialSpend === null ? null : new Prisma.Decimal(dto.essentialSpend);
+    }
+    if (dto.payday !== undefined) {
+      data.payday = dto.payday;
+    }
+    if (dto.horizonDays !== undefined) {
+      data.horizonDays = dto.horizonDays;
+    }
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data,
+      select: { essentialSpend: true, payday: true, horizonDays: true },
+    });
+    return this.serializeSettings(user);
+  }
+
+  private serializeSettings(user: SettingsRow) {
+    return {
+      essential_spend: user.essentialSpend === null ? null : toDecimalString(user.essentialSpend),
+      payday: user.payday,
+      horizon_days: user.horizonDays,
+    };
   }
 }

@@ -73,4 +73,42 @@ describe('UsersService', () => {
     const rolledBackUser = await prisma.user.findUnique({ where: { email: rollbackEmail } });
     expect(rolledBackUser).toBeNull();
   });
+
+  it('returns default settings (all unset) for a freshly created user', async () => {
+    const user = await service.create({ email: testEmail, password: 'password123' });
+
+    const settings = await service.getSettings(user.id);
+
+    expect(settings).toEqual({ essential_spend: null, payday: null, horizon_days: 30 });
+  });
+
+  it('updates settings and returns the new values as strings/numbers', async () => {
+    const user = await service.create({ email: testEmail, password: 'password123' });
+
+    const settings = await service.updateSettings(user.id, {
+      essentialSpend: 1500,
+      payday: 15,
+      horizonDays: 45,
+    });
+
+    expect(settings).toEqual({ essential_spend: '1500', payday: 15, horizon_days: 45 });
+  });
+
+  it('only updates the fields present in the request, leaving others untouched', async () => {
+    const user = await service.create({ email: testEmail, password: 'password123' });
+    await service.updateSettings(user.id, { essentialSpend: 1000, payday: 5, horizonDays: 40 });
+
+    const settings = await service.updateSettings(user.id, { payday: 20 });
+
+    expect(settings).toEqual({ essential_spend: '1000', payday: 20, horizon_days: 40 });
+  });
+
+  it('clears essentialSpend and payday when explicitly set to null', async () => {
+    const user = await service.create({ email: testEmail, password: 'password123' });
+    await service.updateSettings(user.id, { essentialSpend: 1000, payday: 5 });
+
+    const settings = await service.updateSettings(user.id, { essentialSpend: null, payday: null });
+
+    expect(settings).toEqual({ essential_spend: null, payday: null, horizon_days: 30 });
+  });
 });

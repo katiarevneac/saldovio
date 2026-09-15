@@ -8,11 +8,14 @@ datasource db {
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  accounts     Account[]
+  id             Int       @id @default(autoincrement())
+  email          String    @unique
+  passwordHash   String    @map("password_hash")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  essentialSpend Decimal?  @map("essential_spend") @db.Decimal(14, 2)
+  payday         Int?
+  horizonDays    Int       @default(30) @map("horizon_days")
+  accounts       Account[]
 
   @@map("users")
 }
