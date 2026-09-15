@@ -70,7 +70,7 @@ export default function SimulatorPanel({
   const afterEndBani = toBani(result.afterSeries[result.afterSeries.length - 1].balance);
 
   function handleAmountInputChange(value: string) {
-    const parsed = Math.round(Number(value) * 100);
+    const parsed = toBani(value || "0");
     setAmountBani(Number.isFinite(parsed) && parsed >= 0 ? parsed : 0);
   }
 
