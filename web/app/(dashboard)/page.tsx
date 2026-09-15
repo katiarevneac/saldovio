@@ -9,6 +9,7 @@ import { computeMonthlyTotals, currentYearMonth } from "@/lib/overview-metrics";
 import KpiCard from "@/components/KpiCard";
 import AddTransactionModal from "@/components/AddTransactionModal";
 import ForecastSection from "@/components/ForecastSection";
+import SimulatorCard from "@/components/SimulatorCard";
 import { auth } from "@/auth";
 import styles from "./page.module.css";
 
@@ -198,11 +199,9 @@ export default async function DashboardPage() {
         <ForecastSection forecast={forecast} recurringRules={recurringRules} />
       </section>
 
-      <section className={`${styles.card} ${styles.simulatorPlaceholder}`}>
+      <section className={styles.card}>
         <h2 className={styles.cardTitle}>Simulator</h2>
-        <p className={styles.placeholderText}>
-          &ldquo;Can I afford it?&rdquo; scenario planning is coming in a later story.
-        </p>
+        <SimulatorCard currentBalanceBani={totalBani} recurringRules={recurringRules} />
       </section>
     </div>
   );

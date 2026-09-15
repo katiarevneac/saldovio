@@ -176,15 +176,15 @@ describe("DashboardPage", () => {
     ).toHaveAttribute("href", "/transactions");
   });
 
-  it("renders the simulator placeholder card", async () => {
+  it("renders the simulator card with a default amount and verdict", async () => {
     getMyAccountsMock.mockResolvedValue([]);
     getTransactionsMock.mockResolvedValue([]);
 
     const ui = await DashboardPage();
     render(ui);
 
-    expect(screen.getByText("Simulator")).toBeInTheDocument();
-    expect(screen.getByText(/coming in a later story/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Simulator" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Purchase amount")).toHaveValue(100);
   });
 
   it("shows a forecast-unavailable message without crashing when Analytics Service fails", async () => {

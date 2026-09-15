@@ -91,16 +91,3 @@
   margin: 0 0 4px;
 }
 
-.simulatorPlaceholder {
-  border-style: dashed;
-}
-
-.simulatorPlaceholder .cardTitle,
-.placeholderText {
-  color: var(--color-text-tertiary);
-}
-
-.placeholderText {
-  font-size: 13px;
-  margin: 0;
-}
