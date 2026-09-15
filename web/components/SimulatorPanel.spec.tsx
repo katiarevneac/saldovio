@@ -93,8 +93,16 @@ describe("SimulatorPanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Overlaid" }));
 
-    await waitFor(() => {
-      expect(container.querySelector("svg")).toBeInTheDocument();
-    });
+    // RTL's waitFor defaults to a 1000ms timeout, which the next/dynamic
+    // lazy import + Recharts render can exceed under concurrent full-suite
+    // load (29 jsdom environments spinning up together) even though it
+    // resolves in well under 1s in isolation — a test-environment timing
+    // margin, not a production behavior issue.
+    await waitFor(
+      () => {
+        expect(container.querySelector("svg")).toBeInTheDocument();
+      },
+      { timeout: 5000 }
+    );
   });
 });
