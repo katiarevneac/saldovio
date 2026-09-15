@@ -16,7 +16,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Accounts", href: "/accounts" },
   { label: "Forecast", href: "/forecast" },
   { label: "Simulator", href: "/simulator" },
-  { label: "Settings", href: "/settings", disabled: true },
+  { label: "Settings", href: "/settings" },
 ];
 
 function isActiveRoute(pathname: string, href: string): boolean {

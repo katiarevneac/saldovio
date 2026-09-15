@@ -6,6 +6,7 @@ import { getAuthorizedHeaders } from "@/lib/internal-auth";
 import { extractApiErrorMessage } from "@/lib/api-errors";
 import { CreateAccountSchema } from "@/lib/schemas/accounts";
 import { CreateRecurringRuleSchema } from "@/lib/schemas/recurring-rules";
+import { UpdateSettingsSchema } from "@/lib/schemas/settings";
 
 export type CreateTransactionInput = {
   accountId: number;
@@ -86,4 +87,31 @@ export async function createRecurringRuleAction(formData: FormData): Promise<voi
   }
 
   redirect("/");
+}
+
+export async function updateSettingsAction(formData: FormData): Promise<void> {
+  const parsed = UpdateSettingsSchema.safeParse({
+    essentialSpend: formData.get("essentialSpend"),
+    payday: formData.get("payday"),
+    horizonDays: formData.get("horizonDays"),
+  });
+  if (!parsed.success) {
+    const message = parsed.error.issues.map((issue) => issue.message).join(", ");
+    redirect(`/settings?error=${encodeURIComponent(message)}`);
+  }
+
+  const headers = await getAuthorizedHeaders();
+
+  const response = await fetch(`${FINANCE_API_URL}/users/me/settings`, {
+    method: "PATCH",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(parsed.data),
+  });
+
+  if (!response.ok) {
+    const message = await extractApiErrorMessage(response, "Could not update settings");
+    redirect(`/settings?error=${encodeURIComponent(message)}`);
+  }
+
+  redirect("/settings?saved=1");
 }

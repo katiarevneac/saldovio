@@ -1,0 +1,84 @@
+.page {
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-gap);
+}
+
+.sectionCard {
+  composes: card from global;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cardTitle {
+  font-size: 18px;
+  margin: 0;
+}
+
+.profileRow {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+}
+
+.profileLabel {
+  color: var(--color-text-secondary);
+  min-width: 70px;
+}
+
+.note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.field label {
+  font-size: 0.875rem;
+}
+
+.field input {
+  padding: 0.4rem 0.5rem;
+  font-size: 1rem;
+}
+
+.hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.error {
+  color: var(--color-verdict-no);
+  font-size: 0.875rem;
+}
+
+.success {
+  color: var(--color-accent);
+  font-size: 0.875rem;
+}
+
+.form button {
+  align-self: flex-start;
+  padding: 11px 20px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-accent-on);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
