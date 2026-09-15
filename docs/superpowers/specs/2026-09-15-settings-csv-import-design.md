@@ -12,7 +12,7 @@ CSV import is also roadmap stage 7 (brief §19) — the last unbuilt MVP stage b
 
 - **Profile card**: scoped down from the design handoff's "name/email/currency" to email (readonly) + RON currency note only. No `displayName` field added — `users` table has no name column today, and nothing else in the app would consume it. YAGNI.
 - **Forecast assumptions — all three fields become functionally real**, not stored-only placeholders:
-  - `essentialSpendBani`: replaces the provisional 10%-of-balance Simulator verdict threshold when set. Falls back to the existing 10% rule when unset (no behavior change for users who don't touch Settings).
+  - `essentialSpend`: replaces the provisional 10%-of-balance Simulator verdict threshold when set. Falls back to the existing 10% rule when unset (no behavior change for users who don't touch Settings).
   - `payday`: anchors the forecast/simulator window to `[today, next payday)` when set.
   - `horizonDays`: fallback window length (default 30, matching the current fixed behavior) when `payday` is unset.
   - **Precedence**: payday wins when set; horizonDays is the fallback, not a simultaneous cap. (Considered "min(next payday, today+horizonDays)" and rejected — doubles the window-computation logic at every call site for no clear benefit.)
@@ -41,18 +41,18 @@ CSV import is also roadmap stage 7 (brief §19) — the last unbuilt MVP stage b
 
 ### Schema (new Prisma migration)
 
-- `User`: `+essentialSpendBani Int?`, `+payday Int?` (1-31), `+horizonDays Int @default(30)`.
+- `User`: `+essentialSpend Decimal? @db.Decimal(14,2)` (matches `Account.currentBalance`/`Transaction.amount`'s money convention — `NUMERIC`, not an integer-bani field, which this schema has never used), `+payday Int?` (1-31), `+horizonDays Int @default(30)`.
 - `Transaction`: `+importHash String?`, `@@unique([accountId, importHash])` — null for manually-entered transactions, set only for CSV-imported ones.
 
 ### New modules
 
 - `web/lib/forecast-window.ts` — `computeWindowEnd(today, payday, horizonDays): string`. Pure function, single source of truth for window boundary, consumed by both the Analytics Service call site and the Simulator page/card. `payday` clamps to the month's last real day when it exceeds it (same nonexistent-day convention as `RecurringRule.dayOfMonth`, e.g. `payday=31` in a 30-day month → the 30th).
 - `analytics-service`: `ForecastRequest.window_end_date: date` replaces the internal constant; `compute_forecast` takes the window end as a parameter instead of deriving it.
-- `web/lib/simulator.ts`: verdict threshold logic gains the `essentialSpendBani`-based branch (falls back to the existing 10% rule).
+- `web/lib/simulator.ts`: verdict threshold logic gains the `essentialSpend`-based branch (falls back to the existing 10% rule).
 
 ### Finance API — new endpoints
 
-- `GET /users/me/settings`, `PATCH /users/me/settings` — Zod-validated (`payday` 1-31, `horizonDays` positive int, `essentialSpendBani` non-negative).
+- `GET /users/me/settings`, `PATCH /users/me/settings` — Zod-validated (`payday` 1-31, `horizonDays` positive int, `essentialSpend` non-negative).
 - `POST /transactions/import/preview` — multipart CSV + `accountId`. Parses, filters to `State=COMPLETED`, computes per-row hash, flags duplicates (hash already in DB) and parse errors (malformed rows, with reason). Writes nothing.
 - `POST /transactions/import/commit` — takes the (user-confirmed, deduped-in-preview) row set + `accountId`. Inserts atomically (`$transaction`), re-checking hashes at commit time (race-safe against a duplicate import started concurrently or between preview and commit).
 - `GET /transactions/export` — CSV of all the caller's transactions across accounts (`date,account,type,amount,category`).
