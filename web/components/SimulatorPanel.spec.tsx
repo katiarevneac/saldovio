@@ -1,7 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import SimulatorPanel from "./SimulatorPanel";
 import type { RecurringRule } from "@/lib/recurring-rules";
+
+const { simulatePurchaseSpy } = vi.hoisted(() => ({ simulatePurchaseSpy: vi.fn() }));
+vi.mock("@/lib/simulator", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/simulator")>();
+  return {
+    ...actual,
+    simulatePurchase: (...args: Parameters<typeof actual.simulatePurchase>) => {
+      simulatePurchaseSpy(...args);
+      return actual.simulatePurchase(...args);
+    },
+  };
+});
 
 function buildRule(overrides: Partial<RecurringRule> = {}): RecurringRule {
   return {
@@ -104,5 +116,33 @@ describe("SimulatorPanel", () => {
       },
       { timeout: 5000 }
     );
+  });
+
+  it("forwards the windowEndDate prop into simulatePurchase", () => {
+    render(
+      <SimulatorPanel
+        currentBalanceBani={100000}
+        recurringRules={[]}
+        calculationDate="2026-09-14"
+        windowEndDate="2026-11-01"
+      />
+    );
+
+    expect(simulatePurchaseSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ windowEndDate: "2026-11-01" })
+    );
+  });
+
+  it("labels the projected-balance stat generically, not tied to a fixed 30 days", () => {
+    render(
+      <SimulatorPanel
+        currentBalanceBani={100000}
+        recurringRules={[]}
+        calculationDate="2026-09-14"
+      />
+    );
+
+    expect(screen.getAllByText("Projected balance").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Balance in 30 days/)).not.toBeInTheDocument();
   });
 });

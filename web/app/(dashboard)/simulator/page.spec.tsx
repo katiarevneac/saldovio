@@ -21,7 +21,23 @@ vi.mock("@/lib/recurring-rules", () => ({
   getMyRecurringRules: getMyRecurringRulesMock,
 }));
 
+const { getMySettingsMock } = vi.hoisted(() => ({ getMySettingsMock: vi.fn() }));
+vi.mock("@/lib/settings", () => ({ getMySettings: getMySettingsMock }));
+
+const { simulatePurchaseSpy } = vi.hoisted(() => ({ simulatePurchaseSpy: vi.fn() }));
+vi.mock("@/lib/simulator", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/simulator")>();
+  return {
+    ...actual,
+    simulatePurchase: (...args: Parameters<typeof actual.simulatePurchase>) => {
+      simulatePurchaseSpy(...args);
+      return actual.simulatePurchase(...args);
+    },
+  };
+});
+
 import SimulatorPage from "./page";
+import { computeWindowEnd } from "@/lib/forecast-window";
 
 beforeEach(() => {
   authMock.mockReset();
@@ -34,6 +50,8 @@ beforeEach(() => {
     { id: 1, name: "Cont curent", current_balance: "0.00", reference_date: "2026-01-01", balance: "1000.00" },
   ]);
   getMyRecurringRulesMock.mockResolvedValue([]);
+  getMySettingsMock.mockReset();
+  getMySettingsMock.mockResolvedValue({ essential_spend: null, payday: null, horizon_days: 30 });
 });
 
 describe("SimulatorPage", () => {
@@ -72,5 +90,40 @@ describe("SimulatorPage", () => {
     render(ui);
 
     expect(screen.getByLabelText("Purchase amount")).toHaveValue(0);
+  });
+
+  it("computes windowEndDate from settings the same way as the forecast pages, and passes it into simulatePurchase", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 15));
+    try {
+      getMySettingsMock.mockResolvedValue({ essential_spend: null, payday: 20, horizon_days: 45 });
+
+      const ui = await SimulatorPage({ searchParams: Promise.resolve({}) });
+      render(ui);
+
+      const expectedWindowEnd = computeWindowEnd("2026-09-15", 20, 45);
+      expect(simulatePurchaseSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ windowEndDate: expectedWindowEnd })
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("falls back to the legacy 30-day window when settings are unreachable", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 15));
+    try {
+      getMySettingsMock.mockRejectedValue(new Error("network error"));
+
+      const ui = await SimulatorPage({ searchParams: Promise.resolve({}) });
+      render(ui);
+
+      expect(simulatePurchaseSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ windowEndDate: "2026-10-15" })
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

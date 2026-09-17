@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { getMyAccounts } from "@/lib/accounts";
 import { getMyRecurringRules } from "@/lib/recurring-rules";
+import { getMySettings } from "@/lib/settings";
+import { computeWindowEnd } from "@/lib/forecast-window";
 import { toBani } from "@/lib/money";
 import { todayDateString } from "@/lib/simulator";
 import SimulatorPanel from "@/components/SimulatorPanel";
@@ -24,6 +26,18 @@ export default async function SimulatorPage({
   ]);
 
   const totalBani = accounts.reduce((sum, account) => sum + toBani(account.balance), 0);
+  const today = todayDateString();
+
+  // Falls back to the legacy fixed 30-day window if settings are
+  // unreachable — the simulator has no separate "unavailable" state of its
+  // own, so a best-effort default keeps it usable instead of broken.
+  let windowEndDate = computeWindowEnd(today, null, 30);
+  try {
+    const settings = await getMySettings();
+    windowEndDate = computeWindowEnd(today, settings.payday, settings.horizon_days);
+  } catch {
+    // keep the default computed above
+  }
 
   // ?amount= carries a raw bani integer (set by Overview's CTA link), not a
   // decimal RON string — an internal link, not user-typed input, so no
@@ -37,7 +51,7 @@ export default async function SimulatorPage({
       <div className={styles.hero}>
         <h1 className={styles.heroTitle}>Can I afford it?</h1>
         <p className={styles.heroSub}>
-          See how a purchase today changes your 30-day forecast.
+          See how a purchase today changes your forecast.
         </p>
       </div>
 
@@ -46,7 +60,8 @@ export default async function SimulatorPage({
           currentBalanceBani={totalBani}
           recurringRules={recurringRules}
           initialAmountBani={initialAmountBani}
-          calculationDate={todayDateString()}
+          calculationDate={today}
+          windowEndDate={windowEndDate}
         />
       </section>
     </div>

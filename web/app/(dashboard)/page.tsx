@@ -67,9 +67,14 @@ export default async function DashboardPage() {
   const monthly = computeMonthlyTotals(transactions, currentYearMonth());
 
   let forecast: Forecast | null = null;
+  // Defaults to the legacy fixed 30-day window if settings/Analytics Service
+  // are unreachable — matches every existing user's unmodified behavior, and
+  // keeps the simulator card in sync with whatever window the forecast card
+  // actually used, even on the failure path.
+  let windowEndDate = computeWindowEnd(todayDateString(), null, 30);
   try {
     const settings = await getMySettings();
-    const windowEndDate = computeWindowEnd(todayDateString(), settings.payday, settings.horizon_days);
+    windowEndDate = computeWindowEnd(todayDateString(), settings.payday, settings.horizon_days);
     forecast = await getForecast(baniToDecimalString(totalBani), recurringRules, windowEndDate);
   } catch {
     forecast = null;
@@ -210,6 +215,7 @@ export default async function DashboardPage() {
           currentBalanceBani={totalBani}
           recurringRules={recurringRules}
           calculationDate={todayDateString()}
+          windowEndDate={windowEndDate}
         />
       </section>
     </div>

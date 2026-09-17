@@ -20,12 +20,14 @@ type SimulatorCardProps = {
   currentBalanceBani: number;
   recurringRules: RecurringRule[];
   calculationDate?: string;
+  windowEndDate?: string;
 };
 
 export default function SimulatorCard({
   currentBalanceBani,
   recurringRules,
   calculationDate,
+  windowEndDate,
 }: SimulatorCardProps) {
   const [amountText, setAmountText] = useState(String(DEFAULT_AMOUNT_BANI / 100));
   const sliderMaxBani = Math.max(currentBalanceBani * 2, 1000000);
@@ -42,8 +44,9 @@ export default function SimulatorCard({
         recurringRules,
         purchaseBani: amountBani,
         calculationDate,
+        windowEndDate,
       }),
-    [currentBalanceBani, recurringRules, amountBani, calculationDate]
+    [currentBalanceBani, recurringRules, amountBani, calculationDate, windowEndDate]
   );
 
   const afterEndBani = toBani(result.afterSeries[result.afterSeries.length - 1].balance);
@@ -74,7 +77,7 @@ export default function SimulatorCard({
 
       <div className={styles.stats}>
         <div className={styles.stat}>
-          <span className={styles.statLabel}>Balance in 30 days</span>
+          <span className={styles.statLabel}>Projected balance</span>
           <span className={styles.statValue}>{formatAmount(afterEndBani)}</span>
         </div>
         <div className={styles.stat}>

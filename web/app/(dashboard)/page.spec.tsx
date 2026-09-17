@@ -53,6 +53,18 @@ vi.mock("@/lib/settings", () => ({
   getMySettings: getMySettingsMock,
 }));
 
+const { simulatePurchaseSpy } = vi.hoisted(() => ({ simulatePurchaseSpy: vi.fn() }));
+vi.mock("@/lib/simulator", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/simulator")>();
+  return {
+    ...actual,
+    simulatePurchase: (...args: Parameters<typeof actual.simulatePurchase>) => {
+      simulatePurchaseSpy(...args);
+      return actual.simulatePurchase(...args);
+    },
+  };
+});
+
 // TransactionForm (rendered inside DashboardPage's JSX) statically imports
 // "@/app/actions", which imports "@/lib/internal-auth" (`import
 // "server-only"`). Mocking the action module keeps that real server-only
@@ -261,6 +273,45 @@ describe("DashboardPage", () => {
         expect.any(String),
         expect.anything(),
         expectedWindowEnd
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("passes the same windowEndDate it computed for the forecast into the simulator card", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 15));
+    try {
+      getMyAccountsMock.mockResolvedValue([]);
+      getTransactionsMock.mockResolvedValue([]);
+      getMySettingsMock.mockResolvedValue({ essential_spend: null, payday: 20, horizon_days: 45 });
+
+      const ui = await DashboardPage();
+      render(ui);
+
+      const expectedWindowEnd = computeWindowEnd("2026-09-15", 20, 45);
+      expect(simulatePurchaseSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ windowEndDate: expectedWindowEnd })
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("falls back to the legacy 30-day window for the simulator card when settings are unreachable", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 15));
+    try {
+      getMyAccountsMock.mockResolvedValue([]);
+      getTransactionsMock.mockResolvedValue([]);
+      getMySettingsMock.mockRejectedValue(new Error("network error"));
+
+      const ui = await DashboardPage();
+      render(ui);
+
+      expect(simulatePurchaseSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ windowEndDate: "2026-10-15" })
       );
     } finally {
       vi.useRealTimers();

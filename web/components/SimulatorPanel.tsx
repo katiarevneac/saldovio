@@ -40,6 +40,7 @@ type SimulatorPanelProps = {
   recurringRules: RecurringRule[];
   initialAmountBani?: number;
   calculationDate?: string;
+  windowEndDate?: string;
 };
 
 export default function SimulatorPanel({
@@ -47,6 +48,7 @@ export default function SimulatorPanel({
   recurringRules,
   initialAmountBani = 0,
   calculationDate,
+  windowEndDate,
 }: SimulatorPanelProps) {
   const [amountText, setAmountText] = useState(String(Math.max(0, initialAmountBani) / 100));
   const [note, setNote] = useState("");
@@ -66,8 +68,9 @@ export default function SimulatorPanel({
         recurringRules,
         purchaseBani: amountBani,
         calculationDate,
+        windowEndDate,
       }),
-    [currentBalanceBani, recurringRules, amountBani, calculationDate]
+    [currentBalanceBani, recurringRules, amountBani, calculationDate, windowEndDate]
   );
 
   const baseMinimum = findMinimum(toBaniPoints(result.baseSeries));
@@ -151,7 +154,7 @@ export default function SimulatorPanel({
           <div className={styles.statCard}>
             <h2 className={styles.statTitle}>Without this purchase</h2>
             <p className={styles.statRow}>
-              <span>Balance in 30 days</span>
+              <span>Projected balance</span>
               <span>{formatAmount(baseEndBani)}</span>
             </p>
             <p className={styles.statRow}>
@@ -162,7 +165,7 @@ export default function SimulatorPanel({
           <div className={styles.statCard}>
             <h2 className={styles.statTitle}>With this purchase</h2>
             <p className={styles.statRow}>
-              <span>Balance in 30 days</span>
+              <span>Projected balance</span>
               <span>{formatAmount(afterEndBani)}</span>
             </p>
             <p className={styles.statRow}>
@@ -185,7 +188,7 @@ export default function SimulatorPanel({
           </thead>
           <tbody>
             <tr>
-              <td>Balance in 30 days</td>
+              <td>Projected balance</td>
               <td>{formatAmount(baseEndBani)}</td>
               <td>{formatAmount(afterEndBani)}</td>
               <td className={afterEndBani - baseEndBani < 0 ? styles.diffNegative : styles.diffPositive}>
