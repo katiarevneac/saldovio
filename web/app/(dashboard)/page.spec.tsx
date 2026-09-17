@@ -292,7 +292,7 @@ describe("DashboardPage", () => {
 
       const expectedWindowEnd = computeWindowEnd("2026-09-15", 20, 45);
       expect(simulatePurchaseSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ windowEndDate: expectedWindowEnd })
+        expect.objectContaining({ windowEndDate: expectedWindowEnd, essentialSpendBani: null })
       );
     } finally {
       vi.useRealTimers();
@@ -345,7 +345,7 @@ describe("DashboardPage", () => {
       const expectedWindowEnd = computeWindowEnd("2026-09-15", 20, 45);
       expect(expectedWindowEnd).not.toBe("2026-10-15");
       expect(simulatePurchaseSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ windowEndDate: expectedWindowEnd })
+        expect.objectContaining({ windowEndDate: expectedWindowEnd, essentialSpendBani: null })
       );
     } finally {
       vi.useRealTimers();

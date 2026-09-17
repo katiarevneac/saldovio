@@ -10,6 +10,11 @@ export const TIGHT_THRESHOLD_DENOMINATOR = 10;
 
 export type Verdict = "yes" | "tight" | "no";
 
+// Which threshold the verdict was actually compared against — surfaced so
+// the UI can show its basis (brief §11 rule 7: every simulation result
+// shows its assumptions), not just the resulting yes/tight/no.
+export type ThresholdBasis = "essential-spend" | "balance-percent";
+
 export type SimulatorResult = {
   calculationDate: string;
   windowEndDate: string;
@@ -18,6 +23,7 @@ export type SimulatorResult = {
   minimumAfterBani: number;
   minimumAfterDate: string;
   verdict: Verdict;
+  thresholdBasis: ThresholdBasis;
 };
 
 // Independent of web/lib/forecast-occurrences.ts by design — a second,
@@ -180,6 +186,8 @@ export function simulatePurchase({
         currentBalanceBani * TIGHT_THRESHOLD_NUMERATOR;
   const verdict: Verdict =
     minimumAfterBani < 0 ? "no" : isBelowThreshold ? "tight" : "yes";
+  const thresholdBasis: ThresholdBasis =
+    essentialSpendBani != null ? "essential-spend" : "balance-percent";
 
   return {
     calculationDate,
@@ -189,5 +197,6 @@ export function simulatePurchase({
     minimumAfterBani,
     minimumAfterDate,
     verdict,
+    thresholdBasis,
   };
 }

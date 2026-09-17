@@ -232,4 +232,35 @@ describe("simulatePurchase", () => {
 
     expect(result.verdict).toBe("no");
   });
+
+  it("reports thresholdBasis as 'essential-spend' when essentialSpendBani is set", () => {
+    const result = simulatePurchase({
+      currentBalanceBani: 100000,
+      recurringRules: [],
+      purchaseBani: 0,
+      calculationDate: "2026-01-01",
+      essentialSpendBani: 150000,
+    });
+
+    expect(result.thresholdBasis).toBe("essential-spend");
+  });
+
+  it("reports thresholdBasis as 'balance-percent' when essentialSpendBani is null or omitted", () => {
+    const omitted = simulatePurchase({
+      currentBalanceBani: 100000,
+      recurringRules: [],
+      purchaseBani: 0,
+      calculationDate: "2026-01-01",
+    });
+    const explicitNull = simulatePurchase({
+      currentBalanceBani: 100000,
+      recurringRules: [],
+      purchaseBani: 0,
+      calculationDate: "2026-01-01",
+      essentialSpendBani: null,
+    });
+
+    expect(omitted.thresholdBasis).toBe("balance-percent");
+    expect(explicitNull.thresholdBasis).toBe("balance-percent");
+  });
 });

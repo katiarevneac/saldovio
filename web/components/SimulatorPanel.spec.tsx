@@ -148,6 +148,31 @@ describe("SimulatorPanel", () => {
     );
   });
 
+  it("explains the verdict is based on essential spend when essentialSpendBani is set", () => {
+    render(
+      <SimulatorPanel
+        currentBalanceBani={100000}
+        recurringRules={[]}
+        calculationDate="2026-09-14"
+        essentialSpendBani={150000}
+      />
+    );
+
+    expect(screen.getByText(/essential spending floor of 1\.500,00 RON/)).toBeInTheDocument();
+  });
+
+  it("explains the verdict falls back to the 10% rule when essentialSpendBani is not set", () => {
+    render(
+      <SimulatorPanel
+        currentBalanceBani={100000}
+        recurringRules={[]}
+        calculationDate="2026-09-14"
+      />
+    );
+
+    expect(screen.getByText(/default 10% of your balance/)).toBeInTheDocument();
+  });
+
   it("labels the projected-balance stat generically, not tied to a fixed 30 days", () => {
     render(
       <SimulatorPanel

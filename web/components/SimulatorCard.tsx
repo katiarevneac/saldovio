@@ -99,6 +99,11 @@ export default function SimulatorCard({
       <p className={`${styles.verdict} ${styles[`verdict-${result.verdict}`]}`}>
         {VERDICT_LABEL[result.verdict]}
       </p>
+      <p className={styles.thresholdBasis}>
+        {result.thresholdBasis === "essential-spend"
+          ? "Based on essential spend (Settings)."
+          : "Based on 10% of balance."}
+      </p>
 
       <Link href={`/simulator?amount=${amountBani}`} className={styles.cta}>
         Open full simulator

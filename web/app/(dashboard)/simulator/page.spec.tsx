@@ -103,7 +103,7 @@ describe("SimulatorPage", () => {
 
       const expectedWindowEnd = computeWindowEnd("2026-09-15", 20, 45);
       expect(simulatePurchaseSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ windowEndDate: expectedWindowEnd })
+        expect.objectContaining({ windowEndDate: expectedWindowEnd, essentialSpendBani: null })
       );
     } finally {
       vi.useRealTimers();

@@ -144,6 +144,11 @@ export default function SimulatorPanel({
       <p className={`${styles.verdict} ${styles[`verdict-${result.verdict}`]}`}>
         {VERDICT_LABEL[result.verdict]}
       </p>
+      <p className={styles.thresholdBasis}>
+        {result.thresholdBasis === "essential-spend"
+          ? `Based on your essential spending floor of ${formatAmount(essentialSpendBani ?? 0)}.`
+          : "Based on the default 10% of your balance. Set an essential spending amount in Settings for a more precise check."}
+      </p>
 
       <div className={styles.viewSwitcher} role="group" aria-label="Comparison view">
         {VIEWS.map((option) => (
