@@ -28,15 +28,19 @@ export default async function SimulatorPage({
   const totalBani = accounts.reduce((sum, account) => sum + toBani(account.balance), 0);
   const today = todayDateString();
 
-  // Falls back to the legacy fixed 30-day window if settings are
-  // unreachable — the simulator has no separate "unavailable" state of its
-  // own, so a best-effort default keeps it usable instead of broken.
+  // Falls back to the legacy fixed 30-day window and the provisional
+  // 10%-of-balance verdict rule if settings are unreachable — the simulator
+  // has no separate "unavailable" state of its own, so a best-effort default
+  // keeps it usable instead of broken.
   let windowEndDate = computeWindowEnd(today, null, 30);
+  let essentialSpendBani: number | null = null;
   try {
     const settings = await getMySettings();
     windowEndDate = computeWindowEnd(today, settings.payday, settings.horizon_days);
+    essentialSpendBani =
+      settings.essential_spend === null ? null : toBani(settings.essential_spend);
   } catch {
-    // keep the default computed above
+    // keep the defaults computed above
   }
 
   // ?amount= carries a raw bani integer (set by Overview's CTA link), not a
@@ -62,6 +66,7 @@ export default async function SimulatorPage({
           initialAmountBani={initialAmountBani}
           calculationDate={today}
           windowEndDate={windowEndDate}
+          essentialSpendBani={essentialSpendBani}
         />
       </section>
     </div>

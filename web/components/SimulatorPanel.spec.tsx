@@ -133,6 +133,21 @@ describe("SimulatorPanel", () => {
     );
   });
 
+  it("forwards the essentialSpendBani prop into simulatePurchase", () => {
+    render(
+      <SimulatorPanel
+        currentBalanceBani={100000}
+        recurringRules={[]}
+        calculationDate="2026-09-14"
+        essentialSpendBani={150000}
+      />
+    );
+
+    expect(simulatePurchaseSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ essentialSpendBani: 150000 })
+    );
+  });
+
   it("labels the projected-balance stat generically, not tied to a fixed 30 days", () => {
     render(
       <SimulatorPanel

@@ -21,6 +21,7 @@ type SimulatorCardProps = {
   recurringRules: RecurringRule[];
   calculationDate?: string;
   windowEndDate?: string;
+  essentialSpendBani?: number | null;
 };
 
 export default function SimulatorCard({
@@ -28,6 +29,7 @@ export default function SimulatorCard({
   recurringRules,
   calculationDate,
   windowEndDate,
+  essentialSpendBani,
 }: SimulatorCardProps) {
   const [amountText, setAmountText] = useState(String(DEFAULT_AMOUNT_BANI / 100));
   const sliderMaxBani = Math.max(currentBalanceBani * 2, 1000000);
@@ -45,8 +47,16 @@ export default function SimulatorCard({
         purchaseBani: amountBani,
         calculationDate,
         windowEndDate,
+        essentialSpendBani,
       }),
-    [currentBalanceBani, recurringRules, amountBani, calculationDate, windowEndDate]
+    [
+      currentBalanceBani,
+      recurringRules,
+      amountBani,
+      calculationDate,
+      windowEndDate,
+      essentialSpendBani,
+    ]
   );
 
   const afterEndBani = toBani(result.afterSeries[result.afterSeries.length - 1].balance);

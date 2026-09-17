@@ -42,6 +42,22 @@ describe("monthlyRuleOccurrences", () => {
 
     expect(occurrences.map((o) => o.date)).toEqual(["2026-01-01"]);
   });
+
+  it("finds every occurrence in a window spanning more than 3 calendar months", () => {
+    // horizonDays is settable up to 365 via /settings, so a window can span
+    // far more than the 2-3 months the old iteration ceiling assumed.
+    const rule = buildRule({ day_of_month: 15 });
+    const occurrences = monthlyRuleOccurrences([rule], "2026-01-01", "2026-07-01");
+
+    expect(occurrences.map((o) => o.date)).toEqual([
+      "2026-01-15",
+      "2026-02-15",
+      "2026-03-15",
+      "2026-04-15",
+      "2026-05-15",
+      "2026-06-15",
+    ]);
+  });
 });
 
 describe("simulatePurchase", () => {
@@ -156,5 +172,64 @@ describe("simulatePurchase", () => {
       Number(result.baseSeries[result.baseSeries.length - 1].balance) * 100
     );
     expect(finalBani).toBe(100000 - 20000 - 20000);
+  });
+
+  it("uses essentialSpendBani as the 'tight' threshold instead of the 10% rule when it is set", () => {
+    // No purchase, no rules: the minimum after-purchase balance is the full
+    // 1000 RON. The 10% rule (threshold 100 RON) would call this "yes";
+    // an essential spend of 1500 RON means it does not cover the month.
+    const result = simulatePurchase({
+      currentBalanceBani: 100000,
+      recurringRules: [],
+      purchaseBani: 0,
+      calculationDate: "2026-01-01",
+      essentialSpendBani: 150000,
+    });
+
+    expect(result.minimumAfterBani).toBe(100000);
+    expect(result.verdict).toBe("tight");
+  });
+
+  it("verdict is 'yes' when the minimum after-purchase balance is exactly at essentialSpendBani", () => {
+    const result = simulatePurchase({
+      currentBalanceBani: 100000,
+      recurringRules: [],
+      purchaseBani: 0,
+      calculationDate: "2026-01-01",
+      essentialSpendBani: 100000,
+    });
+
+    expect(result.verdict).toBe("yes");
+  });
+
+  it("an explicit essentialSpendBani of null reproduces the 10%-rule behavior exactly", () => {
+    // Same inputs as the "exactly at the 10% threshold" test above, which
+    // passes no essentialSpendBani at all — both must reach the same verdict.
+    const args = {
+      currentBalanceBani: 100000,
+      recurringRules: [],
+      purchaseBani:
+        100000 - (100000 * TIGHT_THRESHOLD_NUMERATOR) / TIGHT_THRESHOLD_DENOMINATOR,
+      calculationDate: "2026-01-01",
+    };
+
+    const explicitNull = simulatePurchase({ ...args, essentialSpendBani: null });
+    const omitted = simulatePurchase(args);
+
+    expect(explicitNull.minimumAfterBani).toBe(10000);
+    expect(explicitNull.verdict).toBe("yes");
+    expect(explicitNull.verdict).toBe(omitted.verdict);
+  });
+
+  it("verdict stays 'no' below zero even when essentialSpendBani is set", () => {
+    const result = simulatePurchase({
+      currentBalanceBani: 100000,
+      recurringRules: [],
+      purchaseBani: 100001,
+      calculationDate: "2026-01-01",
+      essentialSpendBani: 50000,
+    });
+
+    expect(result.verdict).toBe("no");
   });
 });

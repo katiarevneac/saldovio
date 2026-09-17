@@ -110,6 +110,30 @@ describe("SimulatorPage", () => {
     }
   });
 
+  it("converts settings.essential_spend to bani and passes it into simulatePurchase", async () => {
+    getMySettingsMock.mockResolvedValue({
+      essential_spend: "500.00",
+      payday: null,
+      horizon_days: 30,
+    });
+
+    const ui = await SimulatorPage({ searchParams: Promise.resolve({}) });
+    render(ui);
+
+    expect(simulatePurchaseSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ essentialSpendBani: 50000 })
+    );
+  });
+
+  it("passes a null essentialSpendBani when the user has not set an essential spend", async () => {
+    const ui = await SimulatorPage({ searchParams: Promise.resolve({}) });
+    render(ui);
+
+    expect(simulatePurchaseSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ essentialSpendBani: null })
+    );
+  });
+
   it("falls back to the legacy 30-day window when settings are unreachable", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 15));
@@ -120,7 +144,7 @@ describe("SimulatorPage", () => {
       render(ui);
 
       expect(simulatePurchaseSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ windowEndDate: "2026-10-15" })
+        expect.objectContaining({ windowEndDate: "2026-10-15", essentialSpendBani: null })
       );
     } finally {
       vi.useRealTimers();

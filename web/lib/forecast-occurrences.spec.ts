@@ -65,6 +65,21 @@ describe("occurrencesInWindow", () => {
     expect(result.map((occurrence) => occurrence.date)).toEqual(["2026-09-05", "2026-09-20"]);
   });
 
+  it("finds every occurrence in a window spanning more than 3 calendar months", () => {
+    // horizonDays is settable up to 365 via /settings, so a forecast window
+    // can span far more than the 2-3 months the old iteration ceiling assumed.
+    const rule = buildRule({ day_of_month: 15 });
+    const result = occurrencesInWindow([rule], "2026-01-01", "2026-07-01");
+    expect(result.map((occurrence) => occurrence.date)).toEqual([
+      "2026-01-15",
+      "2026-02-15",
+      "2026-03-15",
+      "2026-04-15",
+      "2026-05-15",
+      "2026-06-15",
+    ]);
+  });
+
   it("returns an empty array for an empty rule list", () => {
     expect(occurrencesInWindow([], "2026-09-01", "2026-09-30")).toEqual([]);
   });

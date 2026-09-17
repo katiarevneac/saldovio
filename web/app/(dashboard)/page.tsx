@@ -67,14 +67,21 @@ export default async function DashboardPage() {
   const monthly = computeMonthlyTotals(transactions, currentYearMonth());
 
   let forecast: Forecast | null = null;
-  // Defaults to the legacy fixed 30-day window if settings/Analytics Service
-  // are unreachable — matches every existing user's unmodified behavior, and
-  // keeps the simulator card in sync with whatever window the forecast card
-  // actually used, even on the failure path.
+  // Both start at the legacy defaults (a fixed 30-day window, and the
+  // provisional 10%-of-balance verdict rule) so a user whose settings are
+  // unreachable sees exactly the pre-settings behavior.
+  //
+  // These describe the simulator's own inputs and depend only on `settings`,
+  // not on whether getForecast() succeeds: if the forecast call fails after
+  // settings resolved, the simulator keeps the user's real window and
+  // threshold rather than resetting to the legacy defaults.
   let windowEndDate = computeWindowEnd(todayDateString(), null, 30);
+  let essentialSpendBani: number | null = null;
   try {
     const settings = await getMySettings();
     windowEndDate = computeWindowEnd(todayDateString(), settings.payday, settings.horizon_days);
+    essentialSpendBani =
+      settings.essential_spend === null ? null : toBani(settings.essential_spend);
     forecast = await getForecast(baniToDecimalString(totalBani), recurringRules, windowEndDate);
   } catch {
     forecast = null;
@@ -216,6 +223,7 @@ export default async function DashboardPage() {
           recurringRules={recurringRules}
           calculationDate={todayDateString()}
           windowEndDate={windowEndDate}
+          essentialSpendBani={essentialSpendBani}
         />
       </section>
     </div>

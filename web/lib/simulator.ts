@@ -72,9 +72,15 @@ function addWindowDays(dateString: string, days: number): string {
 
 // Window is [windowStart, windowEnd) — inclusive start, exclusive end,
 // matching analytics-service/forecast.py's _occurrences_in_window and
-// web/lib/forecast-occurrences.ts's occurrencesInWindow convention. A
-// simulator window is at most ~31 days, so it can only ever touch 2
-// calendar months; 3 is a small, cheap safety margin, never load-bearing.
+// web/lib/forecast-occurrences.ts's occurrencesInWindow convention.
+//
+// The real exit condition is `candidate >= windowEnd` below. The iteration
+// ceiling is only a safety net against a malformed windowEnd that never
+// satisfies that break (which would otherwise loop forever); it must never
+// be the thing that ends a legitimate window. Since horizonDays is settable
+// up to 365 (and analytics-service bounds the window at 366 days), a real
+// window can span ~13 calendar months, so 400 leaves a wide margin above
+// anything reachable.
 export function monthlyRuleOccurrences(
   rules: RecurringRule[],
   windowStart: string,
@@ -88,7 +94,7 @@ export function monthlyRuleOccurrences(
     let year = startYear;
     let month = startMonth;
 
-    for (let monthsChecked = 0; monthsChecked < 3; monthsChecked++) {
+    for (let monthsChecked = 0; monthsChecked < 400; monthsChecked++) {
       const candidate = clampedDate(year, month, rule.day_of_month);
 
       if (candidate >= windowEnd) break;
@@ -115,12 +121,14 @@ export function simulatePurchase({
   purchaseBani,
   calculationDate = todayDateString(),
   windowEndDate,
+  essentialSpendBani = null,
 }: {
   currentBalanceBani: number;
   recurringRules: RecurringRule[];
   purchaseBani: number;
   calculationDate?: string;
   windowEndDate?: string;
+  essentialSpendBani?: number | null;
 }): SimulatorResult {
   const resolvedWindowEndDate = windowEndDate ?? addWindowDays(calculationDate, SIMULATOR_WINDOW_DAYS);
   const occurrences = monthlyRuleOccurrences(recurringRules, calculationDate, resolvedWindowEndDate);
@@ -154,11 +162,22 @@ export function simulatePurchase({
     date = nextDate(date);
   }
 
-  // minimumAfterBani < (currentBalanceBani * NUMERATOR / DENOMINATOR), rewritten
-  // as an integer cross-multiplication to avoid float division/multiplication.
+  // Two thresholds, both compared in exact integer bani (never floats):
+  //
+  // - When the user has set an essential-spend figure in Settings, that is
+  //   the real floor the purchase must leave intact, so "tight" means
+  //   minimumAfterBani < essentialSpendBani directly — no fraction, hence
+  //   no cross-multiplication.
+  // - Otherwise, fall back to the provisional 10%-of-balance rule:
+  //   minimumAfterBani < (currentBalanceBani * NUMERATOR / DENOMINATOR),
+  //   rewritten as an integer cross-multiplication to avoid float
+  //   division/multiplication. Unchanged from before essentialSpend existed,
+  //   so a user who never touches Settings sees identical verdicts.
   const isBelowThreshold =
-    minimumAfterBani * TIGHT_THRESHOLD_DENOMINATOR <
-    currentBalanceBani * TIGHT_THRESHOLD_NUMERATOR;
+    essentialSpendBani != null
+      ? minimumAfterBani < essentialSpendBani
+      : minimumAfterBani * TIGHT_THRESHOLD_DENOMINATOR <
+        currentBalanceBani * TIGHT_THRESHOLD_NUMERATOR;
   const verdict: Verdict =
     minimumAfterBani < 0 ? "no" : isBelowThreshold ? "tight" : "yes";
 

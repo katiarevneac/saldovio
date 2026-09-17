@@ -41,6 +41,7 @@ type SimulatorPanelProps = {
   initialAmountBani?: number;
   calculationDate?: string;
   windowEndDate?: string;
+  essentialSpendBani?: number | null;
 };
 
 export default function SimulatorPanel({
@@ -49,6 +50,7 @@ export default function SimulatorPanel({
   initialAmountBani = 0,
   calculationDate,
   windowEndDate,
+  essentialSpendBani,
 }: SimulatorPanelProps) {
   const [amountText, setAmountText] = useState(String(Math.max(0, initialAmountBani) / 100));
   const [note, setNote] = useState("");
@@ -69,8 +71,16 @@ export default function SimulatorPanel({
         purchaseBani: amountBani,
         calculationDate,
         windowEndDate,
+        essentialSpendBani,
       }),
-    [currentBalanceBani, recurringRules, amountBani, calculationDate, windowEndDate]
+    [
+      currentBalanceBani,
+      recurringRules,
+      amountBani,
+      calculationDate,
+      windowEndDate,
+      essentialSpendBani,
+    ]
   );
 
   const baseMinimum = findMinimum(toBaniPoints(result.baseSeries));

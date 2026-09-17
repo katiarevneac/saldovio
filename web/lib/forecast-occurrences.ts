@@ -28,10 +28,15 @@ function nextMonth(year: number, month: number): [number, number] {
 
 // Window is [calculationDate, windowEndDate) — inclusive start, exclusive
 // end — identical convention to analytics-service/forecast.py's
-// _occurrences_in_window. A forecast window is at most ~31 days, so it
-// can only ever touch 2 calendar months; 3 is checked as a small, cheap
-// safety margin, never load-bearing for correctness (the date-range
-// filter below excludes anything found beyond the real window either way).
+// _occurrences_in_window.
+//
+// The real exit condition is `occurrence >= windowEndDate` below. The
+// iteration ceiling is only a safety net against a malformed windowEndDate
+// that never satisfies that break (which would otherwise loop forever); it
+// must never be the thing that ends a legitimate window. Since horizonDays
+// is settable up to 365 (and analytics-service bounds the window at 366
+// days), a real window can span ~13 calendar months, so 400 leaves a wide
+// margin above anything reachable.
 //
 // No Date objects: dates are compared as strings, which is valid because
 // every date here is a zero-padded ISO YYYY-MM-DD string (lexicographic
@@ -49,7 +54,7 @@ export function occurrencesInWindow(
     let year = startYear;
     let month = startMonth;
 
-    for (let monthsChecked = 0; monthsChecked < 3; monthsChecked++) {
+    for (let monthsChecked = 0; monthsChecked < 400; monthsChecked++) {
       const occurrence = clampedOccurrenceDate(year, month, rule.day_of_month);
 
       if (occurrence >= calculationDate && occurrence < windowEndDate) {

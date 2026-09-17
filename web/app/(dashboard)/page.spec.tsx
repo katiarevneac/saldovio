@@ -299,6 +299,59 @@ describe("DashboardPage", () => {
     }
   });
 
+  it("converts settings.essential_spend to bani and passes it into the simulator card", async () => {
+    getMyAccountsMock.mockResolvedValue([]);
+    getTransactionsMock.mockResolvedValue([]);
+    getMySettingsMock.mockResolvedValue({
+      essential_spend: "500.00",
+      payday: null,
+      horizon_days: 30,
+    });
+
+    const ui = await DashboardPage();
+    render(ui);
+
+    expect(simulatePurchaseSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ essentialSpendBani: 50000 })
+    );
+  });
+
+  it("passes a null essentialSpendBani when the user has not set an essential spend", async () => {
+    getMyAccountsMock.mockResolvedValue([]);
+    getTransactionsMock.mockResolvedValue([]);
+
+    const ui = await DashboardPage();
+    render(ui);
+
+    expect(simulatePurchaseSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ essentialSpendBani: null })
+    );
+  });
+
+  it("keeps the settings-derived window for the simulator card when only getForecast fails", async () => {
+    // The simulator's window depends on settings alone. A forecast-only
+    // outage must not silently reset it to the legacy 30-day default.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 15));
+    try {
+      getMyAccountsMock.mockResolvedValue([]);
+      getTransactionsMock.mockResolvedValue([]);
+      getMySettingsMock.mockResolvedValue({ essential_spend: null, payday: 20, horizon_days: 45 });
+      getForecastMock.mockRejectedValue(new Error("analytics down"));
+
+      const ui = await DashboardPage();
+      render(ui);
+
+      const expectedWindowEnd = computeWindowEnd("2026-09-15", 20, 45);
+      expect(expectedWindowEnd).not.toBe("2026-10-15");
+      expect(simulatePurchaseSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ windowEndDate: expectedWindowEnd })
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("falls back to the legacy 30-day window for the simulator card when settings are unreachable", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 15));
@@ -311,7 +364,7 @@ describe("DashboardPage", () => {
       render(ui);
 
       expect(simulatePurchaseSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ windowEndDate: "2026-10-15" })
+        expect.objectContaining({ windowEndDate: "2026-10-15", essentialSpendBani: null })
       );
     } finally {
       vi.useRealTimers();
