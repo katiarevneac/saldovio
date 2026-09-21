@@ -1,0 +1,104 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.field label {
+  font-size: 0.875rem;
+}
+
+.field select,
+.field input[type="file"] {
+  padding: 0.4rem 0.5rem;
+  font-size: 1rem;
+}
+
+.caveat {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.error {
+  color: var(--color-verdict-no);
+  font-size: 0.875rem;
+}
+
+.success {
+  color: var(--color-accent);
+  font-size: 0.875rem;
+}
+
+.previewButton,
+.commitButton {
+  align-self: flex-start;
+  padding: 11px 20px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-accent-on);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.previewButton:disabled,
+.commitButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th {
+  text-align: left;
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.statusPill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.statusValid {
+  composes: statusPill;
+  background: var(--color-accent-tint-bg);
+  border: 1px solid var(--color-accent-tint-border);
+  color: var(--color-accent);
+}
+
+.statusOther {
+  composes: statusPill;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-tertiary);
+}
+
+.tableWrap {
+  max-height: 320px;
+  overflow-y: auto;
+}
