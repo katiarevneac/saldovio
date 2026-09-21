@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getMySettings } from "@/lib/settings";
-import { updateSettingsAction } from "@/app/actions";
+import { getMyAccounts } from "@/lib/accounts";
+import { updateSettingsAction, deleteAccountAction } from "@/app/actions";
+import ImportCsvModal from "@/components/ImportCsvModal";
 import styles from "./page.module.css";
 
 export default async function SettingsPage(props: PageProps<"/settings">) {
@@ -10,14 +12,17 @@ export default async function SettingsPage(props: PageProps<"/settings">) {
     redirect("/login");
   }
 
-  const [settings, searchParams] = await Promise.all([
+  const [settings, accounts, searchParams] = await Promise.all([
     getMySettings(),
+    getMyAccounts(),
     props.searchParams,
   ]);
 
   const errorMessage =
     typeof searchParams.error === "string" ? searchParams.error : null;
   const saved = searchParams.saved === "1";
+  const deleteErrorMessage =
+    typeof searchParams.deleteError === "string" ? searchParams.deleteError : null;
 
   return (
     <div className={styles.page}>
@@ -83,6 +88,37 @@ export default async function SettingsPage(props: PageProps<"/settings">) {
 
           <button type="submit">Save settings</button>
         </form>
+      </section>
+
+      <section className={styles.sectionCard}>
+        <h2 className={styles.cardTitle}>Data</h2>
+
+        <div className={styles.dataActions}>
+          <a href="/api/export" className={styles.exportButton}>
+            Export CSV
+          </a>
+          <ImportCsvModal accounts={accounts} />
+        </div>
+
+        <div className={styles.deleteSection}>
+          <h3 className={styles.deleteTitle}>Delete account</h3>
+          <p className={styles.deleteWarning}>
+            This permanently deletes your account and all its data. This
+            cannot be undone.
+          </p>
+
+          {deleteErrorMessage && <p className={styles.error}>{deleteErrorMessage}</p>}
+
+          <form className={styles.deleteForm} action={deleteAccountAction}>
+            <div className={styles.field}>
+              <label htmlFor="password">Current password</label>
+              <input id="password" name="password" type="password" required />
+            </div>
+            <button type="submit" className={styles.deleteButton}>
+              Delete account permanently
+            </button>
+          </form>
+        </div>
       </section>
     </div>
   );

@@ -14,11 +14,19 @@ vi.mock("next/navigation", () => ({ redirect: redirectMock }));
 const { getMySettingsMock } = vi.hoisted(() => ({ getMySettingsMock: vi.fn() }));
 vi.mock("@/lib/settings", () => ({ getMySettings: getMySettingsMock }));
 
+const { getMyAccountsMock } = vi.hoisted(() => ({ getMyAccountsMock: vi.fn() }));
+vi.mock("@/lib/accounts", () => ({ getMyAccounts: getMyAccountsMock }));
+
+vi.mock("@/components/ImportCsvModal", () => ({
+  default: () => <div data-testid="import-csv-modal-stub" />,
+}));
+
 // Mocking "@/app/actions" keeps the real Server Action — which imports
 // "@/lib/internal-auth" (`import "server-only"`) — out of the test's module
 // graph, same pattern already used by "(dashboard)/page.spec.tsx".
 vi.mock("@/app/actions", () => ({
   updateSettingsAction: vi.fn(),
+  deleteAccountAction: vi.fn(),
 }));
 
 import SettingsPage from "./page";
@@ -27,6 +35,7 @@ beforeEach(() => {
   authMock.mockReset();
   redirectMock.mockClear();
   getMySettingsMock.mockReset();
+  getMyAccountsMock.mockReset();
 
   authMock.mockResolvedValue({ user: { id: "1", email: "test@example.com" } });
   getMySettingsMock.mockResolvedValue({
@@ -34,6 +43,15 @@ beforeEach(() => {
     payday: null,
     horizon_days: 30,
   });
+  getMyAccountsMock.mockResolvedValue([
+    {
+      id: 1,
+      name: "Cont curent",
+      current_balance: "0.00",
+      reference_date: "2026-01-01",
+      balance: "100.00",
+    },
+  ]);
 });
 
 describe("SettingsPage", () => {
@@ -100,5 +118,49 @@ describe("SettingsPage", () => {
     expect(
       screen.getByText("Payday must be between 1 and 31")
     ).toBeInTheDocument();
+  });
+
+  it("renders the Data card with an export link and the import modal", async () => {
+    const ui = await SettingsPage({
+      params: Promise.resolve({}),
+      searchParams: Promise.resolve({}),
+    });
+    render(ui);
+
+    const exportLink = screen.getByRole("link", { name: "Export CSV" });
+    expect(exportLink).toHaveAttribute("href", "/api/export");
+    expect(screen.getByTestId("import-csv-modal-stub")).toBeInTheDocument();
+  });
+
+  it("renders the delete-account form with a password field", async () => {
+    const ui = await SettingsPage({
+      params: Promise.resolve({}),
+      searchParams: Promise.resolve({}),
+    });
+    render(ui);
+
+    expect(screen.getByLabelText("Current password")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Delete account permanently" })
+    ).toBeInTheDocument();
+  });
+
+  it("shows the delete-account error message from searchParams.deleteError", async () => {
+    const ui = await SettingsPage({
+      params: Promise.resolve({}),
+      searchParams: Promise.resolve({ deleteError: "Invalid password" }),
+    });
+    render(ui);
+
+    expect(screen.getByText("Invalid password")).toBeInTheDocument();
+  });
+
+  it("fetches accounts alongside settings", async () => {
+    await SettingsPage({
+      params: Promise.resolve({}),
+      searchParams: Promise.resolve({}),
+    });
+
+    expect(getMyAccountsMock).toHaveBeenCalledTimes(1);
   });
 });
