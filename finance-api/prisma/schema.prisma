@@ -41,7 +41,9 @@ model Transaction {
   amount     Decimal  @db.Decimal(14, 2)
   occurredOn DateTime @map("occurred_on") @db.Date
   category   String?
+  importHash String?  @map("import_hash")
 
+  @@unique([accountId, importHash])
   @@map("transactions")
 }
 
