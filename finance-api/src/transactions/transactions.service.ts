@@ -5,6 +5,14 @@ import { toDecimalString, toDateOnlyString, fromDateOnlyString } from '../common
 import { CreateTransactionDto } from './dto/create-transaction.dto.js';
 import { parseRevolutCsv, type ParsedRow } from './csv/revolut-parser.js';
 
+export type ImportRowInput = {
+  hash: string;
+  occurredOn: string;
+  type: 'income' | 'expense';
+  amount: number;
+  category: string;
+};
+
 @Injectable()
 export class TransactionsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -108,6 +116,42 @@ export class TransactionsService {
         return this.serializePreviewRow(row);
       }),
     };
+  }
+
+  async commitImport(accountId: number, rows: ImportRowInput[], userId: number) {
+    await this.assertOwnsAccount(accountId, userId);
+
+    return this.prisma.$transaction(async (tx) => {
+      const requestedHashes = rows.map((r) => r.hash);
+      const existing = await tx.transaction.findMany({
+        where: { accountId, importHash: { in: requestedHashes } },
+        select: { importHash: true },
+      });
+      const existingHashes = new Set(existing.map((t) => t.importHash));
+
+      const seen = new Set<string>();
+      let imported = 0;
+
+      for (const row of rows) {
+        if (existingHashes.has(row.hash) || seen.has(row.hash)) {
+          continue;
+        }
+        seen.add(row.hash);
+        await tx.transaction.create({
+          data: {
+            accountId,
+            type: row.type,
+            amount: new Prisma.Decimal(row.amount),
+            occurredOn: fromDateOnlyString(row.occurredOn),
+            category: row.category,
+            importHash: row.hash,
+          },
+        });
+        imported += 1;
+      }
+
+      return { imported, skippedDuplicates: rows.length - imported };
+    });
   }
 
   private async assertOwnsAccount(accountId: number, userId: number) {

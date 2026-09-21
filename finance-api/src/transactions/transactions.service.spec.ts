@@ -153,4 +153,106 @@ describe('TransactionsService', () => {
     const stored = await prisma.transaction.findMany({ where: { accountId } });
     expect(stored).toHaveLength(0);
   });
+
+  it('commitImport inserts the given rows and stamps each with its hash', async () => {
+    const result = await service.commitImport(
+      accountId,
+      [{ hash: 'hash-a', occurredOn: '2026-09-10', type: 'expense', amount: -12.5, category: 'Coffee' }],
+      userId,
+    );
+
+    expect(result).toEqual({ imported: 1, skippedDuplicates: 0 });
+    const stored = await prisma.transaction.findMany({ where: { accountId } });
+    expect(stored).toHaveLength(1);
+    expect(stored[0].importHash).toBe('hash-a');
+    expect(stored[0].amount.toString()).toBe('-12.5');
+  });
+
+  it('commitImport skips a row whose hash already exists for the account, without failing the batch', async () => {
+    await prisma.transaction.create({
+      data: {
+        accountId,
+        type: 'expense',
+        amount: new Prisma.Decimal(-5),
+        occurredOn: new Date('2026-09-01T00:00:00.000Z'),
+        category: 'Old',
+        importHash: 'existing-hash',
+      },
+    });
+
+    const result = await service.commitImport(
+      accountId,
+      [
+        { hash: 'existing-hash', occurredOn: '2026-09-10', type: 'expense', amount: -5, category: 'Old' },
+        { hash: 'new-hash', occurredOn: '2026-09-10', type: 'income', amount: 100, category: 'New' },
+      ],
+      userId,
+    );
+
+    expect(result).toEqual({ imported: 1, skippedDuplicates: 1 });
+    const stored = await prisma.transaction.findMany({
+      where: { accountId, importHash: { in: ['existing-hash', 'new-hash'] } },
+    });
+    expect(stored).toHaveLength(2);
+  });
+
+  it('commitImport inserts a hash only once even if it appears twice in the same request', async () => {
+    const result = await service.commitImport(
+      accountId,
+      [
+        { hash: 'repeat-hash', occurredOn: '2026-09-10', type: 'income', amount: 10, category: 'A' },
+        { hash: 'repeat-hash', occurredOn: '2026-09-10', type: 'income', amount: 10, category: 'A' },
+      ],
+      userId,
+    );
+
+    expect(result).toEqual({ imported: 1, skippedDuplicates: 1 });
+    const stored = await prisma.transaction.findMany({ where: { accountId, importHash: 'repeat-hash' } });
+    expect(stored).toHaveLength(1);
+  });
+
+  it('commitImport rejects committing into an account that does not belong to the caller', async () => {
+    await expect(
+      service.commitImport(
+        otherUserAccountId,
+        [{ hash: 'x', occurredOn: '2026-09-10', type: 'income', amount: 1, category: 'X' }],
+        userId,
+      ),
+    ).rejects.toThrow('Account does not belong to the current user');
+  });
+
+  it('a batch commit rolls back entirely if a later insert in the same transaction fails', async () => {
+    // Proves Prisma's $transaction actually rolls back a batch of
+    // individual transaction.create calls for this model — not just
+    // that commitImport is structurally wrapped in one. Same pattern
+    // as the atomic-signup rollback test in users.service.spec.ts.
+    await expect(
+      prisma.$transaction(async (tx) => {
+        await tx.transaction.create({
+          data: {
+            accountId,
+            type: 'income',
+            amount: new Prisma.Decimal(10),
+            occurredOn: new Date('2026-09-10T00:00:00.000Z'),
+            category: 'Test',
+            importHash: 'rollback-hash-1',
+          },
+        });
+        // Force a real Postgres FK violation on the second write.
+        await tx.transaction.create({
+          data: {
+            accountId: -1,
+            type: 'income',
+            amount: new Prisma.Decimal(20),
+            occurredOn: new Date('2026-09-10T00:00:00.000Z'),
+            category: 'Test',
+            importHash: 'rollback-hash-2',
+          },
+        });
+      }),
+    ).rejects.toThrow();
+
+    const rolledBack = await prisma.transaction.findFirst({ where: { importHash: 'rollback-hash-1' } });
+    expect(rolledBack).toBeNull();
+  });
 });
