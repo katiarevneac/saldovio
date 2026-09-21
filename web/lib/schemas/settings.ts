@@ -27,3 +27,7 @@ export const UpdateSettingsSchema = z.object({
     .min(1, "Horizon must be at least 1 day")
     .max(365, "Horizon can be at most 365 days"),
 });
+
+export const DeleteAccountSchema = z.object({
+  password: z.string().min(1, "Password is required"),
+});

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { UpdateSettingsSchema } from "./settings";
+import { UpdateSettingsSchema, DeleteAccountSchema } from "./settings";
 
 describe("UpdateSettingsSchema", () => {
   it("parses a full set of values", () => {
@@ -73,5 +73,20 @@ describe("UpdateSettingsSchema", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe("DeleteAccountSchema", () => {
+  it("accepts a non-empty password", () => {
+    const result = DeleteAccountSchema.safeParse({ password: "x" });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an empty password with a clear message", () => {
+    const result = DeleteAccountSchema.safeParse({ password: "" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe("Password is required");
+    }
   });
 });

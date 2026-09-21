@@ -1,12 +1,14 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { signOut } from "@/auth";
 import { FINANCE_API_URL } from "@/lib/config";
 import { getAuthorizedHeaders } from "@/lib/internal-auth";
 import { extractApiErrorMessage } from "@/lib/api-errors";
 import { CreateAccountSchema } from "@/lib/schemas/accounts";
 import { CreateRecurringRuleSchema } from "@/lib/schemas/recurring-rules";
-import { UpdateSettingsSchema } from "@/lib/schemas/settings";
+import { UpdateSettingsSchema, DeleteAccountSchema } from "@/lib/schemas/settings";
+import type { ImportPreviewRow, ImportCommitRow } from "@/lib/import";
 
 export type CreateTransactionInput = {
   accountId: number;
@@ -114,4 +116,69 @@ export async function updateSettingsAction(formData: FormData): Promise<void> {
   }
 
   redirect("/settings?saved=1");
+}
+
+export async function previewImportAction(
+  formData: FormData
+): Promise<{ rows: ImportPreviewRow[] }> {
+  const headers = await getAuthorizedHeaders();
+
+  // formData carries a File under "file" plus "accountId" — do NOT set
+  // a Content-Type header here, fetch generates the multipart boundary
+  // itself from the FormData body.
+  const response = await fetch(`${FINANCE_API_URL}/transactions/import/preview`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const message = await extractApiErrorMessage(response, "Could not preview import");
+    throw new Error(message);
+  }
+
+  return response.json();
+}
+
+export async function commitImportAction(input: {
+  accountId: number;
+  rows: ImportCommitRow[];
+}): Promise<{ imported: number; skipped_duplicates: number }> {
+  const headers = await getAuthorizedHeaders();
+
+  const response = await fetch(`${FINANCE_API_URL}/transactions/import/commit`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  if (!response.ok) {
+    const message = await extractApiErrorMessage(response, "Could not commit import");
+    throw new Error(message);
+  }
+
+  return response.json();
+}
+
+export async function deleteAccountAction(formData: FormData): Promise<void> {
+  const parsed = DeleteAccountSchema.safeParse({ password: formData.get("password") });
+  if (!parsed.success) {
+    const message = parsed.error.issues.map((issue) => issue.message).join(", ");
+    redirect(`/settings?deleteError=${encodeURIComponent(message)}`);
+  }
+
+  const headers = await getAuthorizedHeaders();
+
+  const response = await fetch(`${FINANCE_API_URL}/users/me`, {
+    method: "DELETE",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(parsed.data),
+  });
+
+  if (!response.ok) {
+    const message = await extractApiErrorMessage(response, "Could not delete account");
+    redirect(`/settings?deleteError=${encodeURIComponent(message)}`);
+  }
+
+  await signOut({ redirectTo: "/login" });
 }
