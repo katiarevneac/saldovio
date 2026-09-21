@@ -157,4 +157,44 @@ describe('UsersService', () => {
     const accounts = await prisma.account.findMany({ where: { userId: user.id } });
     expect(accounts).toHaveLength(1);
   });
+
+  it('rolls back all cascade deletes if a later write in the $transaction batch fails', async () => {
+    const user = await service.create({ email: testEmail, password: 'password123' });
+    const [account] = await prisma.account.findMany({ where: { userId: user.id } });
+    const transaction = await prisma.transaction.create({
+      data: {
+        accountId: account.id,
+        type: 'expense',
+        amount: new Prisma.Decimal(10),
+        occurredOn: todayDateOnly(),
+      },
+    });
+    const recurringRule = await prisma.recurringRule.create({
+      data: {
+        accountId: account.id,
+        type: 'expense',
+        amount: new Prisma.Decimal(10),
+        dayOfMonth: 1,
+      },
+    });
+
+    // Force a real Postgres error mid-transaction by trying to delete a nonexistent user,
+    // which Prisma's delete() throws on (not upsert/findUnique).
+    // This proves the earlier deletes in the same $transaction([...]) batch
+    // don't survive if a later operation fails.
+    await expect(
+      prisma.$transaction([
+        prisma.recurringRule.deleteMany({ where: { account: { userId: user.id } } }),
+        prisma.transaction.deleteMany({ where: { account: { userId: user.id } } }),
+        prisma.account.deleteMany({ where: { userId: user.id } }),
+        prisma.user.delete({ where: { id: -1 } }), // Nonexistent user, will throw RecordNotFound
+      ]),
+    ).rejects.toThrow();
+
+    // All rows still exist — the batch rolled back atomically
+    expect(await prisma.recurringRule.findUnique({ where: { id: recurringRule.id } })).not.toBeNull();
+    expect(await prisma.transaction.findUnique({ where: { id: transaction.id } })).not.toBeNull();
+    expect(await prisma.account.findUnique({ where: { id: account.id } })).not.toBeNull();
+    expect(await prisma.user.findUnique({ where: { id: user.id } })).not.toBeNull();
+  });
 });
