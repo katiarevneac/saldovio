@@ -4,7 +4,7 @@
 // account-name fields, since a user-entered category is freeform text
 // that can legally contain a comma.
 export function csvEscape(value: string): string {
-  if (/[",\n]/.test(value)) {
+  if (/[",\r\n]/.test(value)) {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;

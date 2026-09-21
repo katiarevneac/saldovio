@@ -18,6 +18,10 @@ describe('csvEscape', () => {
     expect(csvEscape('line1\nline2')).toBe('"line1\nline2"');
   });
 
+  it('quotes a value containing a bare carriage return (no following newline)', () => {
+    expect(csvEscape('line1\rline2')).toBe('"line1\rline2"');
+  });
+
   it('leaves an empty string unchanged', () => {
     expect(csvEscape('')).toBe('');
   });

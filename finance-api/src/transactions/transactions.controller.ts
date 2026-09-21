@@ -10,7 +10,6 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
 import { TransactionsService } from './transactions.service.js';
 import { CreateTransactionDto } from './dto/create-transaction.dto.js';
 import { ImportPreviewDto } from './dto/import-preview.dto.js';
@@ -40,7 +39,7 @@ export class TransactionsController {
 
   @Post('import/preview')
   @UseInterceptors(
-    FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_UPLOAD_BYTES } }),
+    FileInterceptor('file', { limits: { fileSize: MAX_UPLOAD_BYTES } }),
   )
   previewImport(
     @UploadedFile() file: Express.Multer.File | undefined,

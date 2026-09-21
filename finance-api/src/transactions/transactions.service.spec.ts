@@ -161,7 +161,7 @@ describe('TransactionsService', () => {
       userId,
     );
 
-    expect(result).toEqual({ imported: 1, skippedDuplicates: 0 });
+    expect(result).toEqual({ imported: 1, skipped_duplicates: 0 });
     const stored = await prisma.transaction.findMany({ where: { accountId } });
     expect(stored).toHaveLength(1);
     expect(stored[0].importHash).toBe('hash-a');
@@ -189,7 +189,7 @@ describe('TransactionsService', () => {
       userId,
     );
 
-    expect(result).toEqual({ imported: 1, skippedDuplicates: 1 });
+    expect(result).toEqual({ imported: 1, skipped_duplicates: 1 });
     const stored = await prisma.transaction.findMany({
       where: { accountId, importHash: { in: ['existing-hash', 'new-hash'] } },
     });
@@ -206,7 +206,7 @@ describe('TransactionsService', () => {
       userId,
     );
 
-    expect(result).toEqual({ imported: 1, skippedDuplicates: 1 });
+    expect(result).toEqual({ imported: 1, skipped_duplicates: 1 });
     const stored = await prisma.transaction.findMany({ where: { accountId, importHash: 'repeat-hash' } });
     expect(stored).toHaveLength(1);
   });

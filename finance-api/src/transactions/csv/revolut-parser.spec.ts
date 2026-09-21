@@ -89,6 +89,37 @@ describe('parseRevolutCsv', () => {
     expect(blank).toHaveLength(1);
   });
 
+  it('does not add a Fee row for a zero fee formatted as "0.00", "0.0", or "-0.00" (real Revolut exports always format to 2 decimals)', () => {
+    for (const feeValue of ['0.00', '0.0', '-0.00']) {
+      const rows = parseRevolutCsv(
+        csv(
+          `CARD_PAYMENT,Current,2026-09-10 10:00:00,2026-09-10 10:00:00,Coffee Shop,-12.50,${feeValue},RON,COMPLETED,987.50`,
+        ),
+      );
+      expect(rows, `Fee="${feeValue}" should not produce a Fee row`).toHaveLength(1);
+    }
+  });
+
+  it('produces an error row, not a silently-rolled-over date, for a calendar-invalid Completed Date', () => {
+    const rows = parseRevolutCsv(
+      csv('CARD_PAYMENT,Current,2026-09-10 10:00:00,2026-02-30 10:00:00,Coffee Shop,-12.50,0,RON,COMPLETED,987.50'),
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].status).toBe('error');
+    expect(rows[0].occurredOn).toBeNull();
+    expect(rows[0].reason).toContain('Completed Date');
+  });
+
+  it('gives the main row and the fee row different hashes end-to-end even when Fee equals Amount exactly', () => {
+    const rows = parseRevolutCsv(
+      csv('EXCHANGE,Current,2026-09-12 08:00:00,2026-09-12 08:00:00,FX trade,-1.00,1.00,RON,COMPLETED,937.25'),
+    );
+
+    expect(rows).toHaveLength(2);
+    expect(rows[0].hash).not.toBe(rows[1].hash);
+  });
+
   it('rejects a structurally broken CSV (inconsistent column count) by throwing', () => {
     expect(() => parseRevolutCsv('Type,Product\nonly,two,but,header,has,two')).toThrow();
   });

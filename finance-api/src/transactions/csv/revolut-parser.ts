@@ -113,7 +113,7 @@ function parseRecord(record: RawRevolutRow): ParsedRow[] {
   // row, same date, category "Fee", with its own independent dedupe
   // hash (see the "discriminator" comment on computeImportHash).
   const fee = parseDecimalField(record.Fee);
-  if (fee !== null && fee !== '0') {
+  if (fee !== null && Number(fee) !== 0) {
     rows.push({
       hash: computeImportHash(hashFields(record.Fee, 'fee')),
       status: 'valid',

@@ -30,5 +30,5 @@ export function computeImportHash(fields: {
   if (fields.discriminator) {
     parts.push(fields.discriminator);
   }
-  return createHash('sha256').update(parts.join('|')).digest('hex');
+  return createHash('sha256').update(JSON.stringify(parts)).digest('hex');
 }

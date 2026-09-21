@@ -151,7 +151,7 @@ export class TransactionsService {
         skipDuplicates: true,
       });
 
-      return { imported: created.count, skippedDuplicates: rows.length - created.count };
+      return { imported: created.count, skipped_duplicates: rows.length - created.count };
     });
   }
 
