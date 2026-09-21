@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Post,
   UploadedFile,
   UseGuards,
@@ -55,5 +56,12 @@ export class TransactionsController {
   @Post('import/commit')
   commitImport(@Body() dto: ImportCommitDto, @CurrentUserId() userId: number) {
     return this.transactionsService.commitImport(dto.accountId, dto.rows, userId);
+  }
+
+  @Get('export')
+  @Header('Content-Type', 'text/csv')
+  @Header('Content-Disposition', 'attachment; filename="transactions.csv"')
+  exportCsv(@CurrentUserId() userId: number) {
+    return this.transactionsService.exportCsv(userId);
   }
 }

@@ -271,4 +271,39 @@ describe('TransactionsService', () => {
     const rolledBack = await prisma.transaction.findFirst({ where: { importHash: 'good-hash' } });
     expect(rolledBack).toBeNull();
   });
+
+  it('exportCsv returns a header row plus one line per transaction across all the caller\'s accounts', async () => {
+    await service.create({ accountId, type: 'income', amount: 100, occurredOn: '2026-09-10', category: 'Salary' }, userId);
+    await service.create({ accountId, type: 'expense', amount: -12.5, occurredOn: '2026-09-11', category: 'Coffee' }, userId);
+
+    const csv = await service.exportCsv(userId);
+    const lines = csv.split('\n');
+
+    expect(lines[0]).toBe('date,account,type,amount,category');
+    expect(lines).toHaveLength(3);
+    expect(lines[1]).toBe('2026-09-10,Test,income,100,Salary');
+    expect(lines[2]).toBe('2026-09-11,Test,expense,-12.5,Coffee');
+  });
+
+  it('exportCsv only includes the caller\'s own transactions', async () => {
+    await service.create({ accountId, type: 'income', amount: 50, occurredOn: '2026-09-10' }, userId);
+
+    const csv = await service.exportCsv(userId);
+
+    expect(csv).not.toContain('otherUserAccountId');
+    expect(csv.split('\n')).toHaveLength(2);
+  });
+
+  it('exportCsv returns just the header when the caller has no transactions', async () => {
+    const csv = await service.exportCsv(userId);
+    expect(csv).toBe('date,account,type,amount,category');
+  });
+
+  it('exportCsv escapes a category containing a comma', async () => {
+    await service.create({ accountId, type: 'expense', amount: -1, occurredOn: '2026-09-10', category: 'Rent, September' }, userId);
+
+    const csv = await service.exportCsv(userId);
+
+    expect(csv.split('\n')[1]).toBe('2026-09-10,Test,expense,-1,"Rent, September"');
+  });
 });

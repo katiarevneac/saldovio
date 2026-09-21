@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { toDecimalString, toDateOnlyString, fromDateOnlyString } from '../common/serialization.js';
 import { CreateTransactionDto } from './dto/create-transaction.dto.js';
 import { parseRevolutCsv, type ParsedRow } from './csv/revolut-parser.js';
+import { csvEscape } from './csv/csv-escape.js';
 
 export type ImportRowInput = {
   hash: string;
@@ -152,6 +153,27 @@ export class TransactionsService {
 
       return { imported: created.count, skippedDuplicates: rows.length - created.count };
     });
+  }
+
+  async exportCsv(userId: number) {
+    const transactions = await this.prisma.transaction.findMany({
+      where: { account: { userId } },
+      include: { account: { select: { name: true } } },
+      orderBy: [{ occurredOn: 'asc' }, { id: 'asc' }],
+    });
+
+    const header = 'date,account,type,amount,category';
+    const lines = transactions.map((t) =>
+      [
+        toDateOnlyString(t.occurredOn),
+        csvEscape(t.account.name),
+        t.type,
+        toDecimalString(t.amount),
+        csvEscape(t.category ?? ''),
+      ].join(','),
+    );
+
+    return [header, ...lines].join('\n');
   }
 
   private async assertOwnsAccount(accountId: number, userId: number) {
