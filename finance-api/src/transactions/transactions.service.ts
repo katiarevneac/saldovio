@@ -1,8 +1,9 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { toDecimalString, toDateOnlyString, fromDateOnlyString } from '../common/serialization.js';
 import { CreateTransactionDto } from './dto/create-transaction.dto.js';
+import { parseRevolutCsv, type ParsedRow } from './csv/revolut-parser.js';
 
 @Injectable()
 export class TransactionsService {
@@ -54,5 +55,81 @@ export class TransactionsService {
       occurred_on: toDateOnlyString(t.occurredOn),
       category: t.category,
     }));
+  }
+
+  async previewImport(accountId: number, file: Buffer, userId: number) {
+    await this.assertOwnsAccount(accountId, userId);
+
+    let rows: ParsedRow[];
+    try {
+      rows = parseRevolutCsv(file);
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error ? error.message : 'Could not parse CSV file',
+      );
+    }
+
+    const candidateHashes = rows.filter((r) => r.status === 'valid').map((r) => r.hash);
+    const existingHashes = new Set(
+      candidateHashes.length
+        ? (
+            await this.prisma.transaction.findMany({
+              where: { accountId, importHash: { in: candidateHashes } },
+              select: { importHash: true },
+            })
+          ).map((t) => t.importHash)
+        : [],
+    );
+
+    // A hash appearing twice within the same file (identical row
+    // repeated, or an unlikely accidental collision) must not be
+    // allowed to reach commitImport twice — the second occurrence is
+    // flagged here rather than relying on commitImport to catch it,
+    // so the preview the user sees already reflects what commit will
+    // actually do.
+    const seenInFile = new Set<string>();
+
+    return {
+      rows: rows.map((row) => {
+        if (row.status !== 'valid') {
+          return this.serializePreviewRow(row);
+        }
+        if (existingHashes.has(row.hash)) {
+          return this.serializePreviewRow({ ...row, status: 'duplicate', reason: 'Already imported' });
+        }
+        if (seenInFile.has(row.hash)) {
+          return this.serializePreviewRow({
+            ...row,
+            status: 'duplicate',
+            reason: 'Duplicate row within this file',
+          });
+        }
+        seenInFile.add(row.hash);
+        return this.serializePreviewRow(row);
+      }),
+    };
+  }
+
+  private async assertOwnsAccount(accountId: number, userId: number) {
+    const account = await this.prisma.account.findFirst({
+      where: { id: accountId, userId },
+      select: { id: true },
+    });
+    if (!account) {
+      throw new ForbiddenException('Account does not belong to the current user');
+    }
+  }
+
+  private serializePreviewRow(row: ParsedRow) {
+    return {
+      hash: row.hash,
+      status: row.status,
+      description: row.description,
+      occurred_on: row.occurredOn,
+      type: row.type,
+      amount: row.amount,
+      category: row.category,
+      reason: row.reason,
+    };
   }
 }
