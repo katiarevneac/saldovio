@@ -286,12 +286,23 @@ describe('TransactionsService', () => {
   });
 
   it('exportCsv only includes the caller\'s own transactions', async () => {
-    await service.create({ accountId, type: 'income', amount: 50, occurredOn: '2026-09-10' }, userId);
+    await service.create({ accountId, type: 'income', amount: 50, occurredOn: '2026-09-10', category: 'Mine' }, userId);
+    await prisma.transaction.create({
+      data: {
+        accountId: otherUserAccountId,
+        type: 'expense',
+        amount: new Prisma.Decimal(-999),
+        occurredOn: new Date('2026-09-10T00:00:00.000Z'),
+        category: 'NotMine',
+      },
+    });
 
     const csv = await service.exportCsv(userId);
 
-    expect(csv).not.toContain('otherUserAccountId');
     expect(csv.split('\n')).toHaveLength(2);
+    expect(csv).toContain('Mine');
+    expect(csv).not.toContain('NotMine');
+    expect(csv).not.toContain('-999');
   });
 
   it('exportCsv returns just the header when the caller has no transactions', async () => {
@@ -305,5 +316,20 @@ describe('TransactionsService', () => {
     const csv = await service.exportCsv(userId);
 
     expect(csv.split('\n')[1]).toBe('2026-09-10,Test,expense,-1,"Rent, September"');
+  });
+
+  it('exportCsv includes transactions from every account the caller owns, not just one', async () => {
+    const secondAccount = await prisma.account.create({
+      data: { name: 'Savings', currentBalance: new Prisma.Decimal(0), referenceDate: new Date(), userId },
+    });
+    await service.create({ accountId, type: 'income', amount: 10, occurredOn: '2026-09-10', category: 'FirstAccount' }, userId);
+    await service.create({ accountId: secondAccount.id, type: 'income', amount: 20, occurredOn: '2026-09-11', category: 'SecondAccount' }, userId);
+
+    const csv = await service.exportCsv(userId);
+    const lines = csv.split('\n');
+
+    expect(lines).toHaveLength(3);
+    expect(csv).toContain('FirstAccount');
+    expect(csv).toContain('SecondAccount');
   });
 });
