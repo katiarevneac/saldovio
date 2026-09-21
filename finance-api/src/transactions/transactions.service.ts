@@ -130,27 +130,27 @@ export class TransactionsService {
       const existingHashes = new Set(existing.map((t) => t.importHash));
 
       const seen = new Set<string>();
-      let imported = 0;
-
-      for (const row of rows) {
+      const toInsert = rows.filter((row) => {
         if (existingHashes.has(row.hash) || seen.has(row.hash)) {
-          continue;
+          return false;
         }
         seen.add(row.hash);
-        await tx.transaction.create({
-          data: {
-            accountId,
-            type: row.type,
-            amount: new Prisma.Decimal(row.amount),
-            occurredOn: fromDateOnlyString(row.occurredOn),
-            category: row.category,
-            importHash: row.hash,
-          },
-        });
-        imported += 1;
-      }
+        return true;
+      });
 
-      return { imported, skippedDuplicates: rows.length - imported };
+      const created = await tx.transaction.createMany({
+        data: toInsert.map((row) => ({
+          accountId,
+          type: row.type,
+          amount: new Prisma.Decimal(row.amount),
+          occurredOn: fromDateOnlyString(row.occurredOn),
+          category: row.category,
+          importHash: row.hash,
+        })),
+        skipDuplicates: true,
+      });
+
+      return { imported: created.count, skippedDuplicates: rows.length - created.count };
     });
   }
 

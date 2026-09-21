@@ -255,4 +255,20 @@ describe('TransactionsService', () => {
     const rolledBack = await prisma.transaction.findFirst({ where: { importHash: 'rollback-hash-1' } });
     expect(rolledBack).toBeNull();
   });
+
+  it('commitImport rolls back the whole batch if a later row fails inside the transaction', async () => {
+    await expect(
+      service.commitImport(
+        accountId,
+        [
+          { hash: 'good-hash', occurredOn: '2026-09-10', type: 'income', amount: 10, category: 'Test' },
+          { hash: 'bad-hash', occurredOn: '2026-02-30', type: 'income', amount: 20, category: 'Test' },
+        ],
+        userId,
+      ),
+    ).rejects.toThrow();
+
+    const rolledBack = await prisma.transaction.findFirst({ where: { importHash: 'good-hash' } });
+    expect(rolledBack).toBeNull();
+  });
 });
