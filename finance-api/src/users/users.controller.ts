@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Patch, Post, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateSettingsDto } from './dto/update-settings.dto.js';
+import { DeleteAccountDto } from './dto/delete-account.dto.js';
 import { InternalAuthGuard } from '../auth/internal-auth.guard.js';
 import { CurrentUserId } from '../auth/current-user-id.decorator.js';
 
@@ -24,5 +25,12 @@ export class UsersController {
   @Patch('me/settings')
   updateSettings(@Body() dto: UpdateSettingsDto, @CurrentUserId() userId: number) {
     return this.usersService.updateSettings(userId, dto);
+  }
+
+  @UseGuards(InternalAuthGuard)
+  @Delete('me')
+  @HttpCode(204)
+  deleteAccount(@Body() dto: DeleteAccountDto, @CurrentUserId() userId: number) {
+    return this.usersService.deleteAccount(userId, dto.password);
   }
 }

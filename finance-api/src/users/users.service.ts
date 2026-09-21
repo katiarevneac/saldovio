@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -81,6 +81,30 @@ export class UsersService {
       select: { essentialSpend: true, payday: true, horizonDays: true },
     });
     return this.serializeSettings(user);
+  }
+
+  async deleteAccount(userId: number, password: string): Promise<void> {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { passwordHash: true },
+    });
+
+    const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordMatches) {
+      throw new UnauthorizedException('Invalid password');
+    }
+
+    // Prisma's schema has no onDelete: Cascade (FKs are RESTRICT by
+    // default, per Epic 7 S1's baseline review) — every dependent row
+    // must be deleted explicitly, in FK-safe order, inside one
+    // transaction so a crash mid-delete can never leave orphaned data
+    // or a half-deleted user (brief §12 atomicity).
+    await this.prisma.$transaction([
+      this.prisma.recurringRule.deleteMany({ where: { account: { userId } } }),
+      this.prisma.transaction.deleteMany({ where: { account: { userId } } }),
+      this.prisma.account.deleteMany({ where: { userId } }),
+      this.prisma.user.delete({ where: { id: userId } }),
+    ]);
   }
 
   private serializeSettings(user: SettingsRow) {

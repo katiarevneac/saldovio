@@ -119,4 +119,42 @@ describe('UsersService', () => {
       prisma.user.update({ where: { id: user.id }, data: { horizonDays: 400 } }),
     ).rejects.toThrow();
   });
+
+  it('cascade-deletes the user and everything they own on correct password', async () => {
+    const user = await service.create({ email: testEmail, password: 'password123' });
+    const [account] = await prisma.account.findMany({ where: { userId: user.id } });
+    await prisma.transaction.create({
+      data: {
+        accountId: account.id,
+        type: 'expense',
+        amount: new Prisma.Decimal(10),
+        occurredOn: todayDateOnly(),
+      },
+    });
+    await prisma.recurringRule.create({
+      data: {
+        accountId: account.id,
+        type: 'expense',
+        amount: new Prisma.Decimal(10),
+        dayOfMonth: 1,
+      },
+    });
+
+    await service.deleteAccount(user.id, 'password123');
+
+    expect(await prisma.user.findUnique({ where: { id: user.id } })).toBeNull();
+    expect(await prisma.account.findMany({ where: { userId: user.id } })).toHaveLength(0);
+    expect(await prisma.transaction.findMany({ where: { accountId: account.id } })).toHaveLength(0);
+    expect(await prisma.recurringRule.findMany({ where: { accountId: account.id } })).toHaveLength(0);
+  });
+
+  it('rejects a wrong password with UnauthorizedException and deletes nothing', async () => {
+    const user = await service.create({ email: testEmail, password: 'password123' });
+
+    await expect(service.deleteAccount(user.id, 'wrong-password')).rejects.toThrow('Invalid password');
+
+    expect(await prisma.user.findUnique({ where: { id: user.id } })).not.toBeNull();
+    const accounts = await prisma.account.findMany({ where: { userId: user.id } });
+    expect(accounts).toHaveLength(1);
+  });
 });
