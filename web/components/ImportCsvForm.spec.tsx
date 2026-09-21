@@ -115,6 +115,112 @@ describe("ImportCsvForm", () => {
     });
   });
 
+  it("disables commit and shows a message when every previewed row is a duplicate", async () => {
+    const allDuplicateRows = [
+      {
+        hash: "h1",
+        status: "duplicate" as const,
+        description: "Grocery store",
+        occurred_on: "2026-09-10",
+        type: "expense" as const,
+        amount: "-45.30",
+        category: "CARD_PAYMENT",
+        reason: "Already imported",
+      },
+      {
+        hash: "h2",
+        status: "duplicate" as const,
+        description: "Rent",
+        occurred_on: "2026-09-01",
+        type: "expense" as const,
+        amount: "-1200",
+        category: "TRANSFER",
+        reason: "Already imported",
+      },
+    ];
+    previewImportActionMock.mockResolvedValue({ rows: allDuplicateRows });
+
+    render(<ImportCsvForm accounts={accounts} onClose={vi.fn()} />);
+
+    const file = new File(["irrelevant"], "statement.csv", { type: "text/csv" });
+    selectFile(screen.getByLabelText("CSV file"), file);
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Grocery store")).toBeInTheDocument();
+    });
+
+    const commitButton = screen.getByRole("button", { name: "Commit selected" });
+    expect(commitButton).toBeDisabled();
+    expect(screen.getByText("Nothing selected to import.")).toBeInTheDocument();
+
+    fireEvent.click(commitButton);
+    expect(commitImportActionMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps distinct checked state for two rows sharing the same hash", async () => {
+    const sharedHashRows = [
+      {
+        hash: "h-shared",
+        status: "valid" as const,
+        description: "First occurrence",
+        occurred_on: "2026-09-10",
+        type: "expense" as const,
+        amount: "-45.30",
+        category: "CARD_PAYMENT",
+        reason: null,
+      },
+      {
+        hash: "h-shared",
+        status: "duplicate" as const,
+        description: "Second occurrence (in-file dup)",
+        occurred_on: "2026-09-10",
+        type: "expense" as const,
+        amount: "-45.30",
+        category: "CARD_PAYMENT",
+        reason: "Duplicate within file",
+      },
+    ];
+    previewImportActionMock.mockResolvedValue({ rows: sharedHashRows });
+    commitImportActionMock.mockResolvedValue({ imported: 1, skipped_duplicates: 0 });
+
+    render(<ImportCsvForm accounts={accounts} onClose={vi.fn()} />);
+
+    const file = new File(["irrelevant"], "statement.csv", { type: "text/csv" });
+    selectFile(screen.getByLabelText("CSV file"), file);
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("First occurrence")).toBeInTheDocument();
+    });
+
+    const checkboxes = screen.getAllByRole("checkbox");
+    expect(checkboxes).toHaveLength(2);
+    expect(checkboxes[0]).toBeChecked(); // valid row, not overwritten by the duplicate's initial state
+    expect(checkboxes[0]).not.toBeDisabled();
+    expect(checkboxes[1]).not.toBeChecked();
+    expect(checkboxes[1]).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Commit selected" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Imported 1 transaction.")).toBeInTheDocument();
+    });
+
+    expect(commitImportActionMock).toHaveBeenCalledWith({
+      accountId: 1,
+      rows: [
+        {
+          hash: "h-shared",
+          occurredOn: "2026-09-10",
+          type: "expense",
+          amount: -45.3,
+          category: "CARD_PAYMENT",
+        },
+      ],
+    });
+  });
+
   it("shows an error message when preview fails", async () => {
     previewImportActionMock.mockRejectedValue(new Error("Could not parse CSV file"));
 

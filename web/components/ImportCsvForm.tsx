@@ -42,9 +42,9 @@ export default function ImportCsvForm({
       const response = await previewImportAction(formData);
       setRows(response.rows);
       const initialChecked: Record<string, boolean> = {};
-      for (const row of response.rows) {
-        initialChecked[row.hash] = row.status === "valid";
-      }
+      response.rows.forEach((row, index) => {
+        initialChecked[`${row.hash}:${index}`] = row.status === "valid";
+      });
       setChecked(initialChecked);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -54,12 +54,15 @@ export default function ImportCsvForm({
     }
   }
 
+  const selectedRows = rows
+    ? rows.filter((row, index) => row.status === "valid" && checked[`${row.hash}:${index}`])
+    : [];
+  const selectedCount = selectedRows.length;
+
   async function handleCommit() {
     if (!rows) return;
     setError("");
     setCommitting(true);
-
-    const selectedRows = rows.filter((row) => row.status === "valid" && checked[row.hash]);
 
     try {
       const response = await commitImportAction({
@@ -135,32 +138,37 @@ export default function ImportCsvForm({
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
-                  <tr key={row.hash}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={row.status === "valid" && !!checked[row.hash]}
-                        disabled={row.status !== "valid"}
-                        onChange={(event) =>
-                          setChecked((prev) => ({ ...prev, [row.hash]: event.target.checked }))
-                        }
-                      />
-                    </td>
-                    <td>{row.occurred_on ?? "—"}</td>
-                    <td>{row.description}</td>
-                    <td>{row.type ?? "—"}</td>
-                    <td>{row.amount ?? "—"}</td>
-                    <td>{row.category ?? "—"}</td>
-                    <td>
-                      <span
-                        className={row.status === "valid" ? styles.statusValid : styles.statusOther}
-                      >
-                        {row.reason ?? row.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {rows.map((row, index) => {
+                  const rowKey = `${row.hash}:${index}`;
+                  return (
+                    <tr key={rowKey}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={row.status === "valid" && !!checked[rowKey]}
+                          disabled={row.status !== "valid"}
+                          onChange={(event) =>
+                            setChecked((prev) => ({ ...prev, [rowKey]: event.target.checked }))
+                          }
+                        />
+                      </td>
+                      <td>{row.occurred_on ?? "—"}</td>
+                      <td>{row.description}</td>
+                      <td>{row.type ?? "—"}</td>
+                      <td>{row.amount ?? "—"}</td>
+                      <td>{row.category ?? "—"}</td>
+                      <td>
+                        <span
+                          className={
+                            row.status === "valid" ? styles.statusValid : styles.statusOther
+                          }
+                        >
+                          {row.reason ?? row.status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -169,10 +177,11 @@ export default function ImportCsvForm({
             type="button"
             className={styles.commitButton}
             onClick={handleCommit}
-            disabled={committing}
+            disabled={committing || selectedCount === 0}
           >
             {committing ? "Importing…" : "Commit selected"}
           </button>
+          {selectedCount === 0 && <p className={styles.caveat}>Nothing selected to import.</p>}
         </div>
       )}
 
