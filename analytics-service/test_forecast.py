@@ -23,7 +23,7 @@ def _request(current_balance, rules, calculation_date, window_end_date=None):
 
 def test_no_recurring_rules_returns_current_balance():
     result = compute_forecast(_request("1000.00", [], date(2026, 9, 9)))
-    assert result.forecast_balance == Decimal("1001.00")
+    assert result.forecast_balance == Decimal("1000.00")
 
 
 def test_income_within_window_is_added():
