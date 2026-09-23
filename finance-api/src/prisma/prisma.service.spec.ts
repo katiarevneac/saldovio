@@ -8,8 +8,15 @@ describe('PrismaService', () => {
     await prisma.$disconnect();
   });
 
-  it('connects to saldovio_dev through the pg adapter and can read existing rows', async () => {
-    const userCount = await prisma.user.count();
-    expect(userCount).toBeGreaterThan(0);
+  it('connects through the pg adapter and can write, read, and delete a row', async () => {
+    const email = `prisma-service-spec-${Date.now()}@example.com`;
+    const created = await prisma.user.create({
+      data: { email, passwordHash: 'test-hash' },
+    });
+
+    const found = await prisma.user.findUnique({ where: { id: created.id } });
+    expect(found?.email).toBe(email);
+
+    await prisma.user.delete({ where: { id: created.id } });
   });
 });
