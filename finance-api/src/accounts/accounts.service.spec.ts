@@ -3,7 +3,7 @@ import { describe, expect, it, beforeEach, afterEach, afterAll } from 'vitest';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AccountsService } from './accounts.service.js';
-import { fromDateOnlyString } from '../common/serialization.js';
+import { fromDateOnlyString, todayDateOnly } from '../common/serialization.js';
 
 describe('AccountsService', () => {
   let service: AccountsService;
@@ -86,4 +86,95 @@ describe('AccountsService', () => {
     expect(result.balance).toBe('150');
     expect(typeof result.balance).toBe('string');
   });
+
+  // improvements.md F01 (P0): the default signup account is created with
+  // currentBalance 0 and referenceDate = today (users.service.ts:36-43).
+  // Because findMine's balance formula only adds transactions strictly
+  // AFTER reference_date, a transaction recorded on signup day satisfies
+  // neither term — it isn't in current_balance (0) and isn't in the SUM
+  // (occurred_on = reference_date, not >). The inclusive-snapshot premise
+  // documented above (line ~39) is false for a brand-new zero-balance
+  // account: nothing was ever "already baked into" a balance of 0.
+  //
+  // EXPECTED (once F01 is fixed): a new-user account showing +1000 today
+  // reports balance "1000". CURRENT (proves the finding): it reports "0".
+  it('F01: same-day income on a fresh zero-balance account is reflected in balance', async () => {
+    const today = todayDateOnly();
+
+    const account = await prisma.account.create({
+      data: {
+        name: 'Fresh signup account',
+        currentBalance: new Prisma.Decimal('0'),
+        referenceDate: today,
+        userId,
+      },
+    });
+
+    await prisma.transaction.create({
+      data: {
+        accountId: account.id,
+        type: 'income',
+        amount: new Prisma.Decimal('1000.00'),
+        occurredOn: today,
+      },
+    });
+
+    const accounts = await service.findMine(userId);
+    const result = accounts.find((a) => a.id === account.id)!;
+
+    expect(result.balance).toBe('1000');
+  });
+
+  // improvements.md F02 (P0): findMine's balance query has no upper bound
+  // on occurred_on (accounts.service.ts:46-60) — the only date predicate
+  // is `t.occurred_on > a.reference_date`. A transaction dated far in the
+  // future is included in "current" balance exactly as if it had already
+  // happened, even though create-transaction.dto.ts places no restriction
+  // on future dates either.
+  //
+  // EXPECTED (once F02 is fixed): a transaction dated a year from now does
+  // NOT inflate today's balance — balance stays "100". CURRENT (proves the
+  // finding): the future transaction is included, balance is "5100".
+  it('F02: a transaction dated far in the future inflates the current balance', async () => {
+    const yesterday = fromDateOnlyString(
+      toDateOnlyStringForOffset(todayDateOnly(), -1),
+    );
+    const farFuture = fromDateOnlyString(
+      toDateOnlyStringForOffset(todayDateOnly(), 365),
+    );
+
+    const account = await prisma.account.create({
+      data: {
+        name: 'Future-dated test',
+        currentBalance: new Prisma.Decimal('100.00'),
+        referenceDate: yesterday,
+        userId,
+      },
+    });
+
+    await prisma.transaction.create({
+      data: {
+        accountId: account.id,
+        type: 'income',
+        amount: new Prisma.Decimal('5000.00'),
+        occurredOn: farFuture,
+      },
+    });
+
+    const accounts = await service.findMine(userId);
+    const result = accounts.find((a) => a.id === account.id)!;
+
+    expect(result.balance).toBe('100');
+  });
 });
+
+// Local helper — offsets a UTC-midnight Date by `days` (may be negative)
+// and formats it back to "YYYY-MM-DD", entirely in UTC calendar math so it
+// matches the UTC-anchored convention fromDateOnlyString/todayDateOnly use.
+function toDateOnlyStringForOffset(base: Date, days: number): string {
+  const shifted = new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
+  const year = shifted.getUTCFullYear();
+  const month = String(shifted.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(shifted.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}

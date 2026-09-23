@@ -32,4 +32,21 @@ describe('ImportCommitSchema', () => {
     const invalid = { ...validRow, amount: 12.505 };
     expect(ImportCommitSchema.safeParse({ accountId: 1, rows: [invalid] }).success).toBe(false);
   });
+
+  // improvements.md F18 (P0): `rows` has `.min(1)` but no `.max()`. The
+  // 5000-row ceiling only exists in revolut-parser.ts's parser, which runs
+  // on the /import/preview path — commit never calls the parser at all
+  // (transactions.service.ts's commitImport inserts the client's rows
+  // directly), so that cap does not apply here.
+  //
+  // EXPECTED (once F18 is fixed): an oversized rows array is rejected.
+  // CURRENT (proves the finding): accepted (bounded only by the 5MB JSON
+  // body limit, which a batch of small rows fits well under).
+  it('F18: accepts an oversized rows array with no upper bound', () => {
+    const rows = Array.from({ length: 10000 }, (_, i) => ({
+      ...validRow,
+      hash: `${i}`.padStart(64, '0'),
+    }));
+    expect(ImportCommitSchema.safeParse({ accountId: 1, rows }).success).toBe(false);
+  });
 });

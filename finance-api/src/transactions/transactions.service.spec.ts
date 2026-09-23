@@ -332,4 +332,19 @@ describe('TransactionsService', () => {
     expect(csv).toContain('FirstAccount');
     expect(csv).toContain('SecondAccount');
   });
+
+  // improvements.md F16 (P0): exportCsv returns a plain string with no
+  // UTF-8 BOM prefix, and the controller sets a bare "text/csv" Content-
+  // Type with no charset (transactions.controller.ts's exportCsv route).
+  // Without a BOM, Excel in particular can misinterpret non-ASCII text
+  // (RON category names, merchant descriptions) using the system's
+  // default codepage instead of UTF-8 when the file is opened directly.
+  //
+  // EXPECTED (once F16 is fixed): the returned CSV starts with the UTF-8
+  // BOM (U+FEFF).
+  // CURRENT (proves the finding): no BOM is present.
+  it('F16: exportCsv omits the UTF-8 BOM needed for reliable spreadsheet import', async () => {
+    const csv = await service.exportCsv(userId);
+    expect(csv.startsWith('﻿')).toBe(true);
+  });
 });

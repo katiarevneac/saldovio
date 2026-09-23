@@ -171,3 +171,39 @@ def test_window_end_date_before_calculation_date_is_rejected():
 def test_window_end_date_more_than_366_days_out_is_rejected():
     with pytest.raises(ValidationError):
         _request("1000.00", [], date(2026, 9, 9), window_end_date=date(2028, 1, 1))
+
+
+# improvements.md F03 (P0): ForecastRequest has no way to say "this rule's
+# occurrence today has already been paid" — Transaction and RecurringRule
+# have no link in finance-api's schema (prisma/schema.prisma), and
+# ForecastRequest itself (forecast.py:38-42) carries current_balance and
+# recurring_rules but no transaction/occurrence-status data at all. Since
+# _occurrences_in_window's window includes calculation_date itself
+# (docstring above, line ~78: "[today, today+30)"), a rule due today is
+# always subtracted here — even when current_balance (computed upstream by
+# Finance API from actual transactions) already reflects that same payment
+# having been made today.
+#
+# This test models exactly that: current_balance is 800.00 because a
+# 200.00 rent expense, due today, was already paid today. The same
+# recurring rule is still passed in (there is no other way to represent
+# it — nothing marks an occurrence as settled), so the forecast subtracts
+# it again.
+#
+# EXPECTED (once F03 is fixed, e.g. by passing already-settled occurrences
+# so they can be excluded): forecast_balance stays 800.00 — the payment
+# already happened, nothing further to subtract today.
+# CURRENT (proves the finding): forecast_balance is 600.00 — double-counted.
+def test_f03_rule_already_paid_today_is_still_subtracted_again():
+    already_paid_rule = RecurringRuleInput(
+        type="expense", amount=Decimal("200.00"), day_of_month=9
+    )
+    result = compute_forecast(
+        _request(
+            "800.00",
+            [already_paid_rule],
+            date(2026, 9, 9),
+            window_end_date=date(2026, 9, 10),
+        )
+    )
+    assert result.forecast_balance == Decimal("800.00")

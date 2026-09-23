@@ -185,4 +185,31 @@ describe("SimulatorPanel", () => {
     expect(screen.getAllByText("Projected balance").length).toBeGreaterThan(0);
     expect(screen.queryByText(/Balance in 30 days/)).not.toBeInTheDocument();
   });
+
+  // improvements.md F08 (P0): SimulatorPanel.tsx parses the amount field as
+  // `toBani(amountText || "0")` — a cleared or unparseable field is coerced
+  // straight to a 0 RON purchase, which trivially passes the affordability
+  // check no matter how tight the user's real finances are. The UI gives no
+  // signal that the amount is empty/invalid rather than genuinely zero.
+  //
+  // EXPECTED (once F08 is fixed): clearing the amount field does not show
+  // the affirmative "affordable" verdict — it shows an invalid/incomplete
+  // state instead.
+  // CURRENT (proves the finding): clearing the field still renders "Yes —
+  // this purchase looks affordable."
+  it("F08: clearing the purchase amount silently produces a guaranteed affordable verdict", () => {
+    render(
+      <SimulatorPanel
+        currentBalanceBani={100000}
+        recurringRules={[]}
+        initialAmountBani={50000}
+        calculationDate="2026-09-14"
+      />
+    );
+
+    const input = screen.getByLabelText("Purchase amount");
+    fireEvent.change(input, { target: { value: "" } });
+
+    expect(screen.queryByText(/this purchase looks affordable/)).not.toBeInTheDocument();
+  });
 });

@@ -132,4 +132,44 @@ describe('parseRevolutCsv', () => {
 
     expect(() => parseRevolutCsv(csv(...rows))).toThrow(/row limit/);
   });
+
+  // improvements.md F04 (P0): the Currency column is read only as a hash
+  // ingredient (revolut-parser.ts:55) — nothing ever compares it against
+  // RON, the app's only supported currency (see web/app/(dashboard)/
+  // settings/page.tsx: "Saldovio supports RON only for now"). A COMPLETED,
+  // otherwise-valid row in EUR is emitted as 'valid' and later imported at
+  // face value as if it were RON.
+  //
+  // EXPECTED (once F04 is fixed): a non-RON row is not 'valid' — it's
+  // rejected/flagged with a reason naming the currency.
+  // CURRENT (proves the finding): status is 'valid', currency is ignored.
+  it('F04: a COMPLETED row in a non-RON currency is accepted as if it were RON', () => {
+    const rows = parseRevolutCsv(
+      csv('CARD_PAYMENT,Current,2026-09-10 10:00:00,2026-09-10 10:00:00,Berlin Cafe,-12.50,0,EUR,COMPLETED,987.50'),
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].status).not.toBe('valid');
+  });
+
+  // improvements.md F05 (P0): classification is a single sign test
+  // (revolut-parser.ts:103 — `amount.startsWith('-') ? 'expense' :
+  // 'income'`). Nothing distinguishes an internal transfer/top-up between
+  // the user's own accounts from real income — a positive-amount TRANSFER
+  // row is classified as ordinary income, inflating income totals
+  // (web/lib/overview-metrics.ts sums income/expense but skips only
+  // manually-entered type: 'transfer' rows, which imported rows can never
+  // be — import-commit.dto.ts's schema rejects 'transfer' outright).
+  //
+  // EXPECTED (once F05 is fixed): a TRANSFER-type row is not silently
+  // folded into 'income' — it's flagged as needing classification/pairing.
+  // CURRENT (proves the finding): it's classified as plain 'income'.
+  it('F05: a positive-amount internal transfer/top-up is classified as plain income', () => {
+    const rows = parseRevolutCsv(
+      csv('TRANSFER,Current,2026-09-11 09:00:00,2026-09-11 09:00:00,From my own savings,300.00,0,RON,COMPLETED,1387.50'),
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].type).not.toBe('income');
+  });
 });

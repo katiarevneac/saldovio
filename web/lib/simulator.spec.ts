@@ -263,4 +263,28 @@ describe("simulatePurchase", () => {
     expect(omitted.thresholdBasis).toBe("balance-percent");
     expect(explicitNull.thresholdBasis).toBe("balance-percent");
   });
+
+  // improvements.md F08 (P0): simulatePurchase has no transactions/spending-
+  // history input at all — with zero recurring rules and no essentialSpend
+  // set, the only signal it has is currentBalanceBani, so a purchase of any
+  // size under the provisional 10%-of-balance threshold returns a flat
+  // "yes" regardless of how much real (non-recurring) spending the user
+  // actually does. This models exactly that: a 90%-of-balance purchase,
+  // with the user's spending data entirely missing.
+  //
+  // EXPECTED (once F08 is fixed): the result does not claim an unqualified
+  // "yes" when there is no real basis (no rules, no essential-spend floor)
+  // for that confidence — at minimum it should not be indistinguishable
+  // from a verdict backed by real data.
+  // CURRENT (proves the finding): verdict is "yes".
+  it("F08: a large purchase with zero spending data (no rules, no essentialSpend) still returns an unqualified 'yes'", () => {
+    const result = simulatePurchase({
+      currentBalanceBani: 100000,
+      recurringRules: [],
+      purchaseBani: 90000,
+      calculationDate: "2026-01-01",
+    });
+
+    expect(result.verdict).not.toBe("yes");
+  });
 });
