@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { describe, expect, it, beforeEach, afterEach, afterAll } from 'vitest';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { ClockService } from '../common/clock.service.js';
 import { TransactionsService } from './transactions.service.js';
 
 describe('TransactionsService', () => {
@@ -16,7 +17,7 @@ describe('TransactionsService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [TransactionsService, PrismaService],
+      providers: [TransactionsService, PrismaService, ClockService],
     }).compile();
 
     service = module.get(TransactionsService);
@@ -55,6 +56,54 @@ describe('TransactionsService', () => {
     expect(transaction.amount).toBe('-75.2');
     expect(typeof transaction.amount).toBe('string');
     expect(transaction.occurred_on).toBe('2026-09-10');
+  });
+
+  // S03.5: a transaction dated in the future can't have "actually
+  // happened" — reject it as `actual` (the default), same as any other
+  // financial-correctness rule, not a soft UX warning.
+  it('rejects a future-dated actual transaction', async () => {
+    const fixedTodayModule: TestingModule = await Test.createTestingModule({
+      providers: [TransactionsService, PrismaService, ClockService],
+    })
+      .overrideProvider(ClockService)
+      .useValue({ now: () => new Date('2026-06-15T00:00:00.000Z'), today: () => new Date(Date.UTC(2026, 5, 15)) })
+      .compile();
+    const fixedClockService = fixedTodayModule.get(TransactionsService);
+
+    await expect(
+      fixedClockService.create(
+        { accountId, type: 'income', amount: 100, occurredOn: '2026-06-16' },
+        userId,
+      ),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  // S03.5: the explicit alternative — a future-dated entry is fine as
+  // long as it's marked `planned`, not `actual`.
+  it('accepts a future-dated planned transaction and returns lifecycle: planned', async () => {
+    const fixedTodayModule: TestingModule = await Test.createTestingModule({
+      providers: [TransactionsService, PrismaService, ClockService],
+    })
+      .overrideProvider(ClockService)
+      .useValue({ now: () => new Date('2026-06-15T00:00:00.000Z'), today: () => new Date(Date.UTC(2026, 5, 15)) })
+      .compile();
+    const fixedClockService = fixedTodayModule.get(TransactionsService);
+
+    const transaction = await fixedClockService.create(
+      { accountId, type: 'income', amount: 100, occurredOn: '2026-06-16', lifecycle: 'planned' },
+      userId,
+    );
+
+    expect(transaction.lifecycle).toBe('planned');
+  });
+
+  it('defaults a transaction to lifecycle: actual when omitted', async () => {
+    const transaction = await service.create(
+      { accountId, type: 'expense', amount: -10, occurredOn: '2026-09-10' },
+      userId,
+    );
+
+    expect(transaction.lifecycle).toBe('actual');
   });
 
   it('rejects writing to an account that does not belong to the caller', async () => {

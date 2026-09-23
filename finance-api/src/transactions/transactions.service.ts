@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/com
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { toDecimalString, toDateOnlyString, fromDateOnlyString } from '../common/serialization.js';
+import { ClockService } from '../common/clock.service.js';
 import { CreateTransactionDto } from './dto/create-transaction.dto.js';
 import { parseRevolutCsv, type ParsedRow } from './csv/revolut-parser.js';
 import { csvEscape } from './csv/csv-escape.js';
@@ -16,7 +17,10 @@ export type ImportRowInput = {
 
 @Injectable()
 export class TransactionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly clock: ClockService,
+  ) {}
 
   async create(dto: CreateTransactionDto, userId: number) {
     // The account in the request body is client-supplied and must not
@@ -30,13 +34,29 @@ export class TransactionsService {
       throw new ForbiddenException('Account does not belong to the current user');
     }
 
+    const occurredOn = fromDateOnlyString(dto.occurredOn);
+    // The Zod schema's .default('actual') only runs through
+    // ZodValidationPipe at the HTTP boundary — a caller invoking this
+    // method directly (as every unit test here does) bypasses it, so
+    // this is normalized again here, same as `category` below.
+    const lifecycle = dto.lifecycle ?? 'actual';
+    // S03.5: an 'actual' entry dated after today can't have "already
+    // happened" — reject it rather than silently accepting a
+    // contradiction. 'planned' entries are exempt by definition.
+    if (lifecycle === 'actual' && occurredOn.getTime() > this.clock.today().getTime()) {
+      throw new BadRequestException(
+        "occurredOn is in the future — an 'actual' transaction can't be dated after today. Use lifecycle: 'planned' instead.",
+      );
+    }
+
     const transaction = await this.prisma.transaction.create({
       data: {
         accountId: dto.accountId,
         type: dto.type,
         amount: new Prisma.Decimal(dto.amount),
-        occurredOn: fromDateOnlyString(dto.occurredOn),
+        occurredOn,
         category: dto.category ?? null,
+        lifecycle,
       },
     });
 
@@ -47,6 +67,7 @@ export class TransactionsService {
       amount: toDecimalString(transaction.amount),
       occurred_on: toDateOnlyString(transaction.occurredOn),
       category: transaction.category,
+      lifecycle: transaction.lifecycle,
     };
   }
 
@@ -63,6 +84,7 @@ export class TransactionsService {
       amount: toDecimalString(t.amount),
       occurred_on: toDateOnlyString(t.occurredOn),
       category: t.category,
+      lifecycle: t.lifecycle,
     }));
   }
 

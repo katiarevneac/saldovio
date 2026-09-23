@@ -47,6 +47,12 @@ model Transaction {
   occurredOn DateTime @map("occurred_on") @db.Date
   category   String?
   importHash String?  @map("import_hash")
+  // financial-rules.md §4's full lifecycle enum is actual/planned/
+  // voided/adjustment, but only actual/planned have any write path yet
+  // (S03.5) — voided/adjustment land with Epic 16 Story 1's edit/void
+  // work, which widens this CHECK rather than reworking the column.
+  // DB default 'actual' is safe: every existing row genuinely is one.
+  lifecycle  String   @default("actual")
 
   @@unique([accountId, importHash])
   @@map("transactions")
