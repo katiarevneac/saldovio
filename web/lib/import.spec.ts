@@ -12,6 +12,7 @@ describe("toCommitRow", () => {
       amount: "-45.30",
       category: "CARD_PAYMENT",
       reason: null,
+      backdated: false,
     };
 
     expect(toCommitRow(row)).toEqual({
@@ -33,6 +34,7 @@ describe("toCommitRow", () => {
       amount: "3000",
       category: null,
       reason: null,
+      backdated: false,
     };
 
     expect(toCommitRow(row).category).toBe("");

@@ -7,6 +7,7 @@ export type Account = {
   name: string;
   current_balance: string;
   reference_date: string;
+  opening_boundary: "legacy_inclusive" | "start_of_day";
   balance: string;
 };
 

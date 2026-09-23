@@ -4,6 +4,7 @@ import { describe, expect, it, beforeEach, afterEach, afterAll } from 'vitest';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ClockService } from '../common/clock.service.js';
+import { fromDateOnlyString } from '../common/serialization.js';
 import { TransactionsService } from './transactions.service.js';
 
 describe('TransactionsService', () => {
@@ -201,6 +202,47 @@ describe('TransactionsService', () => {
 
     const stored = await prisma.transaction.findMany({ where: { accountId } });
     expect(stored).toHaveLength(0);
+  });
+
+  // Epic 14 Story 4: a preview row dated on/before the account's opening
+  // snapshot won't move current_balance if imported (ADR 0002) — flag it
+  // so the user sees that before committing, same as the manual-entry form.
+  it('previewImport flags a row dated before the account reference_date as backdated', async () => {
+    const boundaryAccount = await prisma.account.create({
+      data: {
+        name: 'Backdated import test',
+        currentBalance: new Prisma.Decimal(0),
+        referenceDate: fromDateOnlyString('2026-09-15'),
+        openingBoundary: 'start_of_day',
+        userId,
+      },
+    });
+    const csv = revolutCsv(
+      'CARD_PAYMENT,Current,2026-09-10 10:00:00,2026-09-10 10:00:00,Coffee Shop,-12.50,0,RON,COMPLETED,987.50',
+    );
+
+    const result = await service.previewImport(boundaryAccount.id, csv, userId);
+
+    expect(result.rows[0].backdated).toBe(true);
+  });
+
+  it('previewImport does not flag a row dated on/after the account reference_date as backdated', async () => {
+    const boundaryAccount = await prisma.account.create({
+      data: {
+        name: 'Not-backdated import test',
+        currentBalance: new Prisma.Decimal(0),
+        referenceDate: fromDateOnlyString('2026-09-01'),
+        openingBoundary: 'start_of_day',
+        userId,
+      },
+    });
+    const csv = revolutCsv(
+      'CARD_PAYMENT,Current,2026-09-10 10:00:00,2026-09-10 10:00:00,Coffee Shop,-12.50,0,RON,COMPLETED,987.50',
+    );
+
+    const result = await service.previewImport(boundaryAccount.id, csv, userId);
+
+    expect(result.rows[0].backdated).toBe(false);
   });
 
   it('commitImport inserts the given rows and stamps each with its hash', async () => {

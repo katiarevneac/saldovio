@@ -99,6 +99,13 @@
   color: var(--color-text-tertiary);
 }
 
+.backdatedBadge {
+  display: block;
+  margin-top: 2px;
+  font-size: 10.5px;
+  color: var(--color-text-tertiary);
+}
+
 .tableWrap {
   max-height: 320px;
   overflow-y: auto;

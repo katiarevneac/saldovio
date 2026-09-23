@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createTransactionAction } from "@/app/actions";
 import type { Account } from "@/lib/accounts";
+import { isBackdated } from "@/lib/backdated";
 import { CreateTransactionSchema } from "@/lib/schemas/transactions";
 import styles from "./TransactionForm.module.css";
 
@@ -22,6 +23,12 @@ export default function TransactionForm({
   const [category, setCategory] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const selectedAccount = accounts.find((account) => String(account.id) === accountId);
+  const backdated =
+    !!selectedAccount &&
+    !!occurredOn &&
+    isBackdated(occurredOn, selectedAccount.reference_date, selectedAccount.opening_boundary);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -114,6 +121,13 @@ export default function TransactionForm({
           value={occurredOn}
           onChange={(event) => setOccurredOn(event.target.value)}
         />
+        {backdated && (
+          <p className={styles.notice}>
+            This date is on or before this account&apos;s opening balance
+            ({selectedAccount!.reference_date}) — it will be saved for history
+            but won&apos;t change the account&apos;s current balance.
+          </p>
+        )}
       </div>
 
       <div className={styles.field}>

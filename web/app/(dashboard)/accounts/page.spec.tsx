@@ -42,8 +42,8 @@ describe("AccountsPage", () => {
 
   it("renders the total balance and each account's balance, reference date, and share of total", async () => {
     getMyAccountsMock.mockResolvedValue([
-      { id: 1, name: "Revolut", current_balance: "0.00", reference_date: "2026-01-01", balance: "7500.00" },
-      { id: 2, name: "Cash", current_balance: "0.00", reference_date: "2026-03-01", balance: "2500.00" },
+      { id: 1, name: "Revolut", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, balance: "7500.00" },
+      { id: 2, name: "Cash", current_balance: "0.00", reference_date: "2026-03-01", opening_boundary: "start_of_day" as const, balance: "2500.00" },
     ]);
 
     const ui = await AccountsPage();
@@ -61,8 +61,8 @@ describe("AccountsPage", () => {
 
   it("shows an explicit unavailable percentage instead of a fabricated value when accounts net to zero", async () => {
     getMyAccountsMock.mockResolvedValue([
-      { id: 1, name: "Revolut", current_balance: "0.00", reference_date: "2026-01-01", balance: "500.00" },
-      { id: 2, name: "Loan", current_balance: "0.00", reference_date: "2026-01-01", balance: "-500.00" },
+      { id: 1, name: "Revolut", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, balance: "500.00" },
+      { id: 2, name: "Loan", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, balance: "-500.00" },
     ]);
 
     const ui = await AccountsPage();

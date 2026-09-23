@@ -11,6 +11,7 @@ type AccountWithBalanceRow = {
   current_balance: Prisma.Decimal;
   reference_date: Date;
   configured: boolean;
+  opening_boundary: 'legacy_inclusive' | 'start_of_day';
   balance: Prisma.Decimal;
 };
 
@@ -64,6 +65,7 @@ export class AccountsService {
         a.current_balance,
         a.reference_date,
         a.configured,
+        a.opening_boundary,
         a.current_balance + COALESCE(
           SUM(t.amount) FILTER (
             WHERE t.occurred_on <= ${calculationDate}
@@ -86,6 +88,7 @@ export class AccountsService {
       current_balance: toDecimalString(row.current_balance),
       reference_date: toDateOnlyString(row.reference_date),
       configured: row.configured,
+      opening_boundary: row.opening_boundary,
       balance: toDecimalString(row.balance),
     }));
   }

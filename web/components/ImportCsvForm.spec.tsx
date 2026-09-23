@@ -18,6 +18,7 @@ const accounts = [
     name: "Cont curent",
     current_balance: "0.00",
     reference_date: "2026-01-01",
+    opening_boundary: "start_of_day" as const,
     balance: "100.00",
   },
 ];
@@ -32,6 +33,7 @@ const previewRows = [
     amount: "-45.30",
     category: "CARD_PAYMENT",
     reason: null,
+    backdated: false,
   },
   {
     hash: "h2",
@@ -42,6 +44,7 @@ const previewRows = [
     amount: "-1200",
     category: "TRANSFER",
     reason: "Already imported",
+    backdated: false,
   },
 ];
 
@@ -81,6 +84,38 @@ describe("ImportCsvForm", () => {
     expect(checkboxes[1]).not.toBeChecked(); // duplicate row
     expect(checkboxes[1]).toBeDisabled();
     expect(screen.getByText("Already imported")).toBeInTheDocument();
+  });
+
+  it("marks a backdated valid row without blocking it from being importable", async () => {
+    const rowsWithBackdated = [
+      {
+        hash: "h1",
+        status: "valid" as const,
+        description: "Old coffee",
+        occurred_on: "2026-01-05",
+        type: "expense" as const,
+        amount: "-12.50",
+        category: "CARD_PAYMENT",
+        reason: null,
+        backdated: true,
+      },
+    ];
+    previewImportActionMock.mockResolvedValue({ rows: rowsWithBackdated });
+
+    render(<ImportCsvForm accounts={accounts} onClose={vi.fn()} />);
+
+    const file = new File(["irrelevant"], "statement.csv", { type: "text/csv" });
+    selectFile(screen.getByLabelText("CSV file"), file);
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Old coffee")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Before opening balance")).toBeInTheDocument();
+    const checkbox = screen.getByRole("checkbox");
+    expect(checkbox).toBeChecked();
+    expect(checkbox).not.toBeDisabled();
   });
 
   it("commits only the checked rows and reports the result", async () => {
@@ -126,6 +161,7 @@ describe("ImportCsvForm", () => {
         amount: "-45.30",
         category: "CARD_PAYMENT",
         reason: "Already imported",
+        backdated: false,
       },
       {
         hash: "h2",
@@ -136,6 +172,7 @@ describe("ImportCsvForm", () => {
         amount: "-1200",
         category: "TRANSFER",
         reason: "Already imported",
+        backdated: false,
       },
     ];
     previewImportActionMock.mockResolvedValue({ rows: allDuplicateRows });
@@ -169,6 +206,7 @@ describe("ImportCsvForm", () => {
         amount: "-45.30",
         category: "CARD_PAYMENT",
         reason: null,
+        backdated: false,
       },
       {
         hash: "h-shared",
@@ -179,6 +217,7 @@ describe("ImportCsvForm", () => {
         amount: "-45.30",
         category: "CARD_PAYMENT",
         reason: "Duplicate within file",
+        backdated: false,
       },
     ];
     previewImportActionMock.mockResolvedValue({ rows: sharedHashRows });

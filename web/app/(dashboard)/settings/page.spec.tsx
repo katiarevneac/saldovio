@@ -49,6 +49,7 @@ beforeEach(() => {
       name: "Cont curent",
       current_balance: "0.00",
       reference_date: "2026-01-01",
+      opening_boundary: "start_of_day" as const,
       balance: "100.00",
     },
   ]);

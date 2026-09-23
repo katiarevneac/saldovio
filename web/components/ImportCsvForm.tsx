@@ -152,7 +152,14 @@ export default function ImportCsvForm({
                           }
                         />
                       </td>
-                      <td>{row.occurred_on ?? "—"}</td>
+                      <td>
+                        {row.occurred_on ?? "—"}
+                        {row.backdated && (
+                          <span className={styles.backdatedBadge} title="Before this account's opening balance — will import but won't change the current balance.">
+                            Before opening balance
+                          </span>
+                        )}
+                      </td>
                       <td>{row.description}</td>
                       <td>{row.type ?? "—"}</td>
                       <td>{row.amount ?? "—"}</td>

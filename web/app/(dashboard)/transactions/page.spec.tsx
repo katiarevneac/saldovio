@@ -64,7 +64,7 @@ describe("TransactionsPage", () => {
       { id: 2, account_id: 1, type: "income", amount: "500.00", occurred_on: "2026-09-01", category: null },
     ]);
     getMyAccountsMock.mockResolvedValue([
-      { id: 1, name: "Revolut", current_balance: "0.00", reference_date: "2026-01-01", balance: "100.00" },
+      { id: 1, name: "Revolut", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, balance: "100.00" },
     ]);
 
     const ui = await TransactionsPage();

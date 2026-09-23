@@ -47,7 +47,7 @@ beforeEach(() => {
 
   authMock.mockResolvedValue({ user: { id: "1", email: "test@example.com" } });
   getMyAccountsMock.mockResolvedValue([
-    { id: 1, name: "Cont curent", current_balance: "0.00", reference_date: "2026-01-01", balance: "1000.00" },
+    { id: 1, name: "Cont curent", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, balance: "1000.00" },
   ]);
   getMyRecurringRulesMock.mockResolvedValue([]);
   getMySettingsMock.mockReset();

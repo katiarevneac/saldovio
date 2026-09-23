@@ -3,6 +3,7 @@ import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { toDecimalString, toDateOnlyString, fromDateOnlyString } from '../common/serialization.js';
 import { ClockService } from '../common/clock.service.js';
+import { isBackdated } from '../common/backdated.js';
 import { CreateTransactionDto } from './dto/create-transaction.dto.js';
 import { parseRevolutCsv, type ParsedRow } from './csv/revolut-parser.js';
 import { csvEscape } from './csv/csv-escape.js';
@@ -89,7 +90,15 @@ export class TransactionsService {
   }
 
   async previewImport(accountId: number, file: Buffer, userId: number) {
-    await this.assertOwnsAccount(accountId, userId);
+    const account = await this.prisma.account.findFirst({
+      where: { id: accountId, userId },
+      select: { referenceDate: true, openingBoundary: true },
+    });
+    if (!account) {
+      throw new ForbiddenException('Account does not belong to the current user');
+    }
+    const referenceDate = toDateOnlyString(account.referenceDate);
+    const openingBoundary = account.openingBoundary as 'legacy_inclusive' | 'start_of_day';
 
     let rows: ParsedRow[];
     try {
@@ -123,20 +132,24 @@ export class TransactionsService {
     return {
       rows: rows.map((row) => {
         if (row.status !== 'valid') {
-          return this.serializePreviewRow(row);
+          return this.serializePreviewRow(row, referenceDate, openingBoundary);
         }
         if (existingHashes.has(row.hash)) {
-          return this.serializePreviewRow({ ...row, status: 'duplicate', reason: 'Already imported' });
+          return this.serializePreviewRow(
+            { ...row, status: 'duplicate', reason: 'Already imported' },
+            referenceDate,
+            openingBoundary,
+          );
         }
         if (seenInFile.has(row.hash)) {
-          return this.serializePreviewRow({
-            ...row,
-            status: 'duplicate',
-            reason: 'Duplicate row within this file',
-          });
+          return this.serializePreviewRow(
+            { ...row, status: 'duplicate', reason: 'Duplicate row within this file' },
+            referenceDate,
+            openingBoundary,
+          );
         }
         seenInFile.add(row.hash);
-        return this.serializePreviewRow(row);
+        return this.serializePreviewRow(row, referenceDate, openingBoundary);
       }),
     };
   }
@@ -208,7 +221,11 @@ export class TransactionsService {
     }
   }
 
-  private serializePreviewRow(row: ParsedRow) {
+  private serializePreviewRow(
+    row: ParsedRow,
+    referenceDate: string,
+    openingBoundary: 'legacy_inclusive' | 'start_of_day',
+  ) {
     return {
       hash: row.hash,
       status: row.status,
@@ -218,6 +235,13 @@ export class TransactionsService {
       amount: row.amount,
       category: row.category,
       reason: row.reason,
+      // Only meaningful for an importable row — a duplicate/error/skipped
+      // row never reaches commitImport, so whether it would have moved
+      // the balance is moot (S03.4/ADR 0002).
+      backdated:
+        row.status === 'valid' && row.occurredOn
+          ? isBackdated(row.occurredOn, referenceDate, openingBoundary)
+          : null,
     };
   }
 }

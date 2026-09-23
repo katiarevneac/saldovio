@@ -18,6 +18,7 @@ export type ImportPreviewRow = {
   amount: string | null;
   category: string | null;
   reason: string | null;
+  backdated: boolean | null;
 };
 
 export type ImportCommitRow = {

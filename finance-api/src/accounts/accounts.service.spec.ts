@@ -173,6 +173,26 @@ describe('AccountsService', () => {
 
     expect(result.balance).toBe('100');
   });
+
+  // Epic 14 Story 4: web needs opening_boundary to compute the
+  // backdated-entry preview client-side (ADR 0002's two formulas),
+  // without a second round trip per date the user picks.
+  it('returns opening_boundary alongside the other account fields', async () => {
+    const account = await prisma.account.create({
+      data: {
+        name: 'Boundary exposure test',
+        currentBalance: new Prisma.Decimal('0'),
+        referenceDate: fromDateOnlyString('2026-01-01'),
+        openingBoundary: 'start_of_day',
+        userId,
+      },
+    });
+
+    const accounts = await service.findMine(userId);
+    const result = accounts.find((a) => a.id === account.id)!;
+
+    expect(result.opening_boundary).toBe('start_of_day');
+  });
 });
 
 // Local helper — offsets a UTC-midnight Date by `days` (may be negative)
