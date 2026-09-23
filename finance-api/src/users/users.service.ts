@@ -2,7 +2,8 @@ import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/co
 import bcrypt from 'bcryptjs';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { todayDateOnly, toDecimalString } from '../common/serialization.js';
+import { toDecimalString } from '../common/serialization.js';
+import { ClockService } from '../common/clock.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateSettingsDto } from './dto/update-settings.dto.js';
 
@@ -16,7 +17,10 @@ type SettingsRow = {
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly clock: ClockService,
+  ) {}
 
   async create(dto: CreateUserDto) {
     const passwordHash = await bcrypt.hash(dto.password, 10);
@@ -37,7 +41,7 @@ export class UsersService {
           data: {
             name: 'Cont curent',
             currentBalance: new Prisma.Decimal(0),
-            referenceDate: todayDateOnly(),
+            referenceDate: this.clock.today(),
             userId: user.id,
           },
         });

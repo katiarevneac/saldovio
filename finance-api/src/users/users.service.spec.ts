@@ -2,7 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { describe, expect, it, beforeEach, afterEach, afterAll } from 'vitest';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { todayDateOnly } from '../common/serialization.js';
+import { todayDateOnly, toDateOnlyString } from '../common/serialization.js';
+import { ClockService } from '../common/clock.service.js';
 import { UsersService } from './users.service.js';
 
 describe('UsersService', () => {
@@ -12,7 +13,7 @@ describe('UsersService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UsersService, PrismaService],
+      providers: [UsersService, PrismaService, ClockService],
     }).compile();
 
     service = module.get(UsersService);
@@ -40,6 +41,30 @@ describe('UsersService', () => {
     expect(accounts).toHaveLength(1);
     expect(accounts[0].name).toBe('Cont curent');
     expect(accounts[0].currentBalance.toString()).toBe('0');
+  });
+
+  it("sets the default account's referenceDate from the injected clock, not the real wall clock", async () => {
+    const fixedClockEmail = `${testEmail}-fixed-clock`;
+    const fixedToday = new Date(Date.UTC(2020, 0, 15));
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [UsersService, PrismaService, ClockService],
+    })
+      .overrideProvider(ClockService)
+      .useValue({ now: () => fixedToday, today: () => fixedToday })
+      .compile();
+
+    const fixedClockService = module.get(UsersService);
+    const user = await fixedClockService.create({
+      email: fixedClockEmail,
+      password: 'password123',
+    });
+
+    const [account] = await prisma.account.findMany({ where: { userId: user.id } });
+    expect(toDateOnlyString(account.referenceDate)).toBe('2020-01-15');
+
+    await prisma.account.deleteMany({ where: { userId: user.id } });
+    await prisma.user.deleteMany({ where: { id: user.id } });
   });
 
   it('rejects a duplicate email with ConflictException', async () => {
