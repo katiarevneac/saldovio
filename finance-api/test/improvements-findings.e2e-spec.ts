@@ -93,7 +93,7 @@ describe('improvements.md P0 findings (e2e)', () => {
       data: { email, passwordHash: 'not-a-real-hash' },
     });
     const account = await prisma.account.create({
-      data: { name: 'Idempotency test', currentBalance: '0', referenceDate: new Date('2026-01-01'), userId: user.id },
+      data: { name: 'Idempotency test', currentBalance: '0', referenceDate: new Date('2026-01-01'), openingBoundary: 'start_of_day', userId: user.id },
     });
     const token = await signInternalToken(String(user.id));
 
@@ -146,7 +146,7 @@ describe('improvements.md P0 findings (e2e)', () => {
       data: { email, passwordHash: 'not-a-real-hash' },
     });
     const account = await prisma.account.create({
-      data: { name: 'Commit trust test', currentBalance: '0', referenceDate: new Date('2026-01-01'), userId: user.id },
+      data: { name: 'Commit trust test', currentBalance: '0', referenceDate: new Date('2026-01-01'), openingBoundary: 'start_of_day', userId: user.id },
     });
     const token = await signInternalToken(String(user.id));
 

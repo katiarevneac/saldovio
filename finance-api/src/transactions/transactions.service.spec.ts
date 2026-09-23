@@ -25,13 +25,13 @@ describe('TransactionsService', () => {
     const user = await prisma.user.create({ data: { email: testEmail, passwordHash: 'x' } });
     userId = user.id;
     const account = await prisma.account.create({
-      data: { name: 'Test', currentBalance: new Prisma.Decimal(0), referenceDate: new Date(), userId },
+      data: { name: 'Test', currentBalance: new Prisma.Decimal(0), referenceDate: new Date(), openingBoundary: 'start_of_day', userId },
     });
     accountId = account.id;
 
     const otherUser = await prisma.user.create({ data: { email: otherEmail, passwordHash: 'x' } });
     const otherAccount = await prisma.account.create({
-      data: { name: 'Other', currentBalance: new Prisma.Decimal(0), referenceDate: new Date(), userId: otherUser.id },
+      data: { name: 'Other', currentBalance: new Prisma.Decimal(0), referenceDate: new Date(), openingBoundary: 'start_of_day', userId: otherUser.id },
     });
     otherUserAccountId = otherAccount.id;
   });
@@ -320,7 +320,13 @@ describe('TransactionsService', () => {
 
   it('exportCsv includes transactions from every account the caller owns, not just one', async () => {
     const secondAccount = await prisma.account.create({
-      data: { name: 'Savings', currentBalance: new Prisma.Decimal(0), referenceDate: new Date(), userId },
+      data: {
+        name: 'Savings',
+        currentBalance: new Prisma.Decimal(0),
+        referenceDate: new Date(),
+        openingBoundary: 'start_of_day',
+        userId,
+      },
     });
     await service.create({ accountId, type: 'income', amount: 10, occurredOn: '2026-09-10', category: 'FirstAccount' }, userId);
     await service.create({ accountId: secondAccount.id, type: 'income', amount: 20, occurredOn: '2026-09-11', category: 'SecondAccount' }, userId);

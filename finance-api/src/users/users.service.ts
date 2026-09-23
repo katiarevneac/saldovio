@@ -42,6 +42,12 @@ export class UsersService {
             name: 'Cont curent',
             currentBalance: new Prisma.Decimal(0),
             referenceDate: this.clock.today(),
+            openingBoundary: 'start_of_day',
+            // S03.2: this account has no real balance yet — the user
+            // hasn't told us anything about their actual finances. Not
+            // presented as a configured financial situation until they
+            // do (edit flow, Epic 14 Sprint 2 Story 6, flips this).
+            configured: false,
             userId: user.id,
           },
         });

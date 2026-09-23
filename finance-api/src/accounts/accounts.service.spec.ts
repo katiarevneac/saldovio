@@ -3,6 +3,7 @@ import { describe, expect, it, beforeEach, afterEach, afterAll } from 'vitest';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AccountsService } from './accounts.service.js';
+import { ClockService } from '../common/clock.service.js';
 import { fromDateOnlyString, todayDateOnly } from '../common/serialization.js';
 
 describe('AccountsService', () => {
@@ -13,7 +14,7 @@ describe('AccountsService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [AccountsService, PrismaService],
+      providers: [AccountsService, PrismaService, ClockService],
     }).compile();
 
     service = module.get(AccountsService);
@@ -50,12 +51,16 @@ describe('AccountsService', () => {
     expect(account.reference_date).toBe('2026-01-01');
   });
 
-  it('adds only transactions strictly after reference_date to the balance', async () => {
+  // S03.1 regression: legacy_inclusive accounts must keep the original
+  // ">" formula unchanged by ADR 0002's fix — no silent reinterpretation
+  // of an existing account's balance.
+  it('legacy_inclusive: adds only transactions strictly after reference_date to the balance', async () => {
     const account = await prisma.account.create({
       data: {
         name: 'Balance test',
         currentBalance: new Prisma.Decimal('100.00'),
         referenceDate: fromDateOnlyString('2026-01-15'),
+        openingBoundary: 'legacy_inclusive',
         userId,
       },
     });
@@ -106,6 +111,7 @@ describe('AccountsService', () => {
         name: 'Fresh signup account',
         currentBalance: new Prisma.Decimal('0'),
         referenceDate: today,
+        openingBoundary: 'start_of_day',
         userId,
       },
     });
@@ -148,6 +154,7 @@ describe('AccountsService', () => {
         name: 'Future-dated test',
         currentBalance: new Prisma.Decimal('100.00'),
         referenceDate: yesterday,
+        openingBoundary: 'legacy_inclusive',
         userId,
       },
     });

@@ -21,14 +21,19 @@ model User {
 }
 
 model Account {
-  id             Int             @id @default(autoincrement())
-  name           String
-  currentBalance Decimal         @map("current_balance") @db.Decimal(14, 2)
-  referenceDate  DateTime        @map("reference_date") @db.Date
-  userId         Int             @map("user_id")
-  user           User            @relation(fields: [userId], references: [id])
-  transactions   Transaction[]
-  recurringRules RecurringRule[]
+  id              Int             @id @default(autoincrement())
+  name            String
+  currentBalance  Decimal         @map("current_balance") @db.Decimal(14, 2)
+  referenceDate   DateTime        @map("reference_date") @db.Date
+  // ADR 0002: legacy_inclusive (existing accounts, > reference_date) vs
+  // start_of_day (new accounts, >= reference_date). No Prisma-level
+  // default deliberately — every write path must set it explicitly.
+  openingBoundary String          @map("opening_boundary")
+  configured      Boolean         @default(true) @map("configured")
+  userId          Int             @map("user_id")
+  user            User            @relation(fields: [userId], references: [id])
+  transactions    Transaction[]
+  recurringRules  RecurringRule[]
 
   @@map("accounts")
 }

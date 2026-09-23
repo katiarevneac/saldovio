@@ -54,6 +54,7 @@ async function main() {
       name: ACCOUNT.name,
       currentBalance: ACCOUNT.currentBalance,
       referenceDate: new Date(`${ACCOUNT.referenceDate}T00:00:00.000Z`),
+      openingBoundary: 'start_of_day',
       userId: user.id,
     },
   });

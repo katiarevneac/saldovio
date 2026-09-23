@@ -24,13 +24,13 @@ describe('RecurringRulesService', () => {
     const user = await prisma.user.create({ data: { email: testEmail, passwordHash: 'x' } });
     userId = user.id;
     const account = await prisma.account.create({
-      data: { name: 'Test', currentBalance: new Prisma.Decimal(0), referenceDate: new Date(), userId },
+      data: { name: 'Test', currentBalance: new Prisma.Decimal(0), referenceDate: new Date(), openingBoundary: 'start_of_day', userId },
     });
     accountId = account.id;
 
     const otherUser = await prisma.user.create({ data: { email: otherEmail, passwordHash: 'x' } });
     const otherAccount = await prisma.account.create({
-      data: { name: 'Other', currentBalance: new Prisma.Decimal(0), referenceDate: new Date(), userId: otherUser.id },
+      data: { name: 'Other', currentBalance: new Prisma.Decimal(0), referenceDate: new Date(), openingBoundary: 'start_of_day', userId: otherUser.id },
     });
     otherUserAccountId = otherAccount.id;
   });

@@ -89,6 +89,7 @@ describe('UsersService', () => {
             name: 'Should not persist',
             currentBalance: new Prisma.Decimal(0),
             referenceDate: todayDateOnly(),
+            openingBoundary: 'start_of_day',
             userId: -1, // no user with this id exists — FK violation
           },
         });

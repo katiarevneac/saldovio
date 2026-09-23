@@ -63,6 +63,7 @@ async function main() {
         name: fixture.account.name,
         currentBalance: fixture.account.currentBalance,
         referenceDate: new Date(`${fixture.account.referenceDate}T00:00:00.000Z`),
+        openingBoundary: 'start_of_day',
         userId: user.id,
       },
     });
