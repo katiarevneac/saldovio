@@ -46,7 +46,14 @@ $ npm run start:prod
 
 ## Run tests
 
+Tests need a dedicated `saldovio_test` database — never point them at `saldovio_dev`, which holds real development data. A `setupFiles` guard (`test/setup-db-guard.ts`) refuses to run if `DATABASE_URL` doesn't resolve to a database whose name ends in `_test`.
+
 ```bash
+# one-time setup
+$ createdb saldovio_test
+$ cp .env.test.example .env.test   # then fill in DATABASE_URL / INTERNAL_API_SECRET
+$ npx prisma migrate deploy         # against saldovio_test, via .env.test or an explicit DATABASE_URL override
+
 # unit tests
 $ npm run test
 
