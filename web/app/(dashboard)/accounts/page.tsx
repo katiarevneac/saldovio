@@ -75,7 +75,7 @@ export default async function AccountsPage() {
                     Complete setup
                   </Link>
                 ) : (
-                  <Link href={`/accounts/${account.id}/edit`} className={styles.completeSetupLink}>
+                  <Link href={`/accounts/${account.id}/edit`} className={styles.correctBalanceLink}>
                     Correct balance
                   </Link>
                 )}

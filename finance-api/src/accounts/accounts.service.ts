@@ -50,13 +50,20 @@ export class AccountsService {
 
   // S03.2/Epic 14 Sprint 2 Story 6: an unconfigured account's "edit" is
   // its deferred initial configuration, completing it flips configured
-  // to true. An already-configured account can only be renamed here —
-  // changing its balance/reference date on an already-configured account
-  // is S03.7's previewed reconciliation flow — the client shows the
-  // recomputed balance before the user submits (web/lib/account-balance-
-  // preview.ts), so the server doesn't need to block or re-stage the
-  // write. openingBoundary itself is never part of this DTO and is never
-  // touched here — ADR 0002: permanent per account, no conversion path.
+  // to true. Changing balance/reference date on an already-configured
+  // account is S03.7's previewed reconciliation flow — the client shows
+  // the recomputed balance before the user submits (web/lib/account-
+  // balance-preview.ts), so the server doesn't need to block or re-stage
+  // the write. openingBoundary itself is never part of this DTO and is
+  // never touched here — ADR 0002: permanent per account, no conversion
+  // path.
+  //
+  // No audit trail (old value, reason, timestamp) is captured on this
+  // overwrite yet — unlike every other write path in this service, this
+  // one destructively replaces real financial history rather than adding
+  // to it. Deliberately deferred: the target-model doc's not-yet-built
+  // `Reconciliation` entity (S10) is the intended home for that history,
+  // not a bolt-on here.
   async update(id: number, dto: UpdateAccountDto, userId: number) {
     const existing = await this.prisma.account.findFirst({
       where: { id, userId },
