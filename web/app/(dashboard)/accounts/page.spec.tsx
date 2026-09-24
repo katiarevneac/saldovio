@@ -75,18 +75,22 @@ describe("AccountsPage", () => {
     expect(screen.getAllByText("% of total: unavailable").length).toBe(2);
   });
 
-  it("shows a Complete setup link for an unconfigured account, and none for a configured one", async () => {
+  it("shows a Complete setup link for an unconfigured account, and a Correct balance link for a configured one", async () => {
     getMyAccountsMock.mockResolvedValue([
-      { id: 1, name: "Cont curent", current_balance: "0.00", reference_date: "2026-09-20", opening_boundary: "start_of_day" as const, configured: false, balance: "0.00" },
-      { id: 2, name: "Revolut", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, balance: "500.00" },
+      { id: 1, name: "Cont curent", current_balance: "0.00", reference_date: "2026-09-20", opening_boundary: "start_of_day" as const, configured: false, archived: false, protectedSavings: false, balance: "0.00" },
+      { id: 2, name: "Revolut", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, archived: false, protectedSavings: false, balance: "500.00" },
     ]);
 
     const ui = await AccountsPage();
     render(ui);
 
-    const links = screen.getAllByRole("link", { name: "Complete setup" });
-    expect(links).toHaveLength(1);
-    expect(links[0]).toHaveAttribute("href", "/accounts/1/edit");
+    const completeLinks = screen.getAllByRole("link", { name: "Complete setup" });
+    expect(completeLinks).toHaveLength(1);
+    expect(completeLinks[0]).toHaveAttribute("href", "/accounts/1/edit");
+
+    const correctLinks = screen.getAllByRole("link", { name: "Correct balance" });
+    expect(correctLinks).toHaveLength(1);
+    expect(correctLinks[0]).toHaveAttribute("href", "/accounts/2/edit");
   });
 
   it("shows an empty state and no cards when the user has no accounts", async () => {

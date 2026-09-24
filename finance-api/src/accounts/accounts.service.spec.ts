@@ -244,7 +244,15 @@ describe('AccountsService', () => {
     expect(updated.configured).toBe(true);
   });
 
-  it('update rejects changing currentBalance/referenceDate on an already-configured account', async () => {
+  // S03.7: an already-configured account's opening balance/reference date
+  // can now be corrected directly (previewed client-side beforehand — see
+  // web/lib/account-balance-preview.ts — not staged/validated server-side,
+  // since the client already has everything needed to preview locally).
+  // openingBoundary itself is never touched here (ADR 0002: permanent,
+  // no conversion path) — this test proves the existing boundary formula
+  // is honored against the CORRECTED snapshot, not just that the write
+  // succeeds.
+  it('update allows correcting currentBalance/referenceDate on an already-configured account, honoring its existing opening_boundary', async () => {
     const account = await prisma.account.create({
       data: {
         name: 'Cont curent',
@@ -255,14 +263,29 @@ describe('AccountsService', () => {
         userId,
       },
     });
+    // Dated exactly on the corrected reference date — start_of_day's ">="
+    // means this must be included in the recomputed balance.
+    await prisma.transaction.create({
+      data: {
+        accountId: account.id,
+        type: 'income',
+        amount: new Prisma.Decimal('50.00'),
+        occurredOn: fromDateOnlyString('2026-02-01'),
+      },
+    });
 
-    await expect(
-      service.update(
-        account.id,
-        { name: 'Cont curent', currentBalance: 999, referenceDate: '2026-01-01' },
-        userId,
-      ),
-    ).rejects.toThrow(/already configured/i);
+    const updated = await service.update(
+      account.id,
+      { name: 'Cont curent', currentBalance: 999, referenceDate: '2026-02-01' },
+      userId,
+    );
+
+    expect(updated.current_balance).toBe('999');
+    expect(updated.reference_date).toBe('2026-02-01');
+
+    const accounts = await service.findMine(userId);
+    const result = accounts.find((a) => a.id === account.id)!;
+    expect(result.balance).toBe('1049'); // 999 + 50, start_of_day >= includes 2026-02-01
   });
 
   it('update allows renaming an already-configured account when balance/date are unchanged', async () => {

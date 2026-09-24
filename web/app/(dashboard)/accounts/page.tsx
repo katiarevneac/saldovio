@@ -70,9 +70,13 @@ export default async function AccountsPage() {
                 {account.protectedSavings && (
                   <span className={styles.badge}>Protected savings</span>
                 )}
-                {!account.configured && (
+                {!account.configured ? (
                   <Link href={`/accounts/${account.id}/edit`} className={styles.completeSetupLink}>
                     Complete setup
+                  </Link>
+                ) : (
+                  <Link href={`/accounts/${account.id}/edit`} className={styles.completeSetupLink}>
+                    Correct balance
                   </Link>
                 )}
                 <div className={styles.cardActions}>

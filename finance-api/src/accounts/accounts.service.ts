@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { toDecimalString, toDateOnlyString, fromDateOnlyString } from '../common/serialization.js';
@@ -51,25 +51,18 @@ export class AccountsService {
   // S03.2/Epic 14 Sprint 2 Story 6: an unconfigured account's "edit" is
   // its deferred initial configuration, completing it flips configured
   // to true. An already-configured account can only be renamed here —
-  // changing its balance/reference date is S03.7's previewed
-  // reconciliation flow (not built yet), never a blind overwrite of a
-  // snapshot that may already be reflected in real usage.
+  // changing its balance/reference date on an already-configured account
+  // is S03.7's previewed reconciliation flow — the client shows the
+  // recomputed balance before the user submits (web/lib/account-balance-
+  // preview.ts), so the server doesn't need to block or re-stage the
+  // write. openingBoundary itself is never part of this DTO and is never
+  // touched here — ADR 0002: permanent per account, no conversion path.
   async update(id: number, dto: UpdateAccountDto, userId: number) {
     const existing = await this.prisma.account.findFirst({
       where: { id, userId },
     });
     if (!existing) {
       throw new ForbiddenException('Account does not belong to the current user');
-    }
-
-    if (existing.configured) {
-      const balanceUnchanged = existing.currentBalance.equals(new Prisma.Decimal(dto.currentBalance));
-      const dateUnchanged = toDateOnlyString(existing.referenceDate) === dto.referenceDate;
-      if (!balanceUnchanged || !dateUnchanged) {
-        throw new BadRequestException(
-          'This account is already configured — its opening balance/reference date can only be corrected through the reconciliation flow, not overwritten directly.',
-        );
-      }
     }
 
     const account = await this.prisma.account.update({

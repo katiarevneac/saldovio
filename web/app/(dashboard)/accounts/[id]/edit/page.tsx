@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { updateAccountAction } from "@/app/actions";
 import { getMyAccounts } from "@/lib/accounts";
+import { getTransactions } from "@/lib/transactions";
+import { toBani } from "@/lib/money";
+import { todayDateString } from "@/lib/simulator";
 import { auth } from "@/auth";
+import AccountCorrectionForm from "@/components/AccountCorrectionForm";
 import styles from "./page.module.css";
 
 export default async function EditAccountPage(props: PageProps<"/accounts/[id]/edit">) {
@@ -14,15 +17,15 @@ export default async function EditAccountPage(props: PageProps<"/accounts/[id]/e
   const { id } = await props.params;
   const accountId = Number(id);
 
-  const accounts = await getMyAccounts();
+  const [accounts, transactions] = await Promise.all([
+    getMyAccounts(),
+    getTransactions(),
+  ]);
   const account = accounts.find((a) => a.id === accountId);
 
-  // Nothing to complete: the account doesn't exist (or isn't the
-  // caller's — getMyAccounts is already owner-scoped) or is already
-  // configured. Direct navigation is the only way to reach this state,
-  // since the "Complete setup" link only ever points at an unconfigured
-  // account of the caller's own.
-  if (!account || account.configured) {
+  // Nothing to show: the account doesn't exist, or isn't the caller's —
+  // getMyAccounts is already owner-scoped.
+  if (!account) {
     redirect("/accounts");
   }
 
@@ -30,46 +33,25 @@ export default async function EditAccountPage(props: PageProps<"/accounts/[id]/e
   const errorMessage =
     typeof searchParams.error === "string" ? searchParams.error : null;
 
+  const accountTransactions = transactions
+    .filter((t) => t.account_id === accountId)
+    .map((t) => ({ occurredOn: t.occurred_on, amountBani: toBani(t.amount) }));
+
   return (
     <div className={styles.page}>
-      <h1>Complete account setup</h1>
+      <h1>{account.configured ? "Correct account balance" : "Complete account setup"}</h1>
 
       {errorMessage && <p className={styles.error}>{errorMessage}</p>}
 
-      <form
-        className={styles.form}
-        action={updateAccountAction.bind(null, accountId)}
-      >
-        <div className={styles.field}>
-          <label htmlFor="name">Name</label>
-          <input id="name" name="name" type="text" defaultValue={account.name} required />
-        </div>
-
-        <div className={styles.field}>
-          <label htmlFor="currentBalance">Starting balance</label>
-          <input
-            id="currentBalance"
-            name="currentBalance"
-            type="number"
-            step="0.01"
-            defaultValue={account.current_balance}
-            required
-          />
-        </div>
-
-        <div className={styles.field}>
-          <label htmlFor="referenceDate">As of date</label>
-          <input
-            id="referenceDate"
-            name="referenceDate"
-            type="date"
-            defaultValue={account.reference_date}
-            required
-          />
-        </div>
-
-        <button type="submit">Save</button>
-      </form>
+      <AccountCorrectionForm
+        accountId={accountId}
+        name={account.name}
+        currentBalance={account.current_balance}
+        referenceDate={account.reference_date}
+        openingBoundary={account.opening_boundary}
+        transactions={accountTransactions}
+        today={todayDateString()}
+      />
 
       <p>
         <Link href="/accounts">Back to accounts</Link>

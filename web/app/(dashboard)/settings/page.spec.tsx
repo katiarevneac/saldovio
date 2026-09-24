@@ -18,9 +18,7 @@ const { getMyAccountsMock } = vi.hoisted(() => ({ getMyAccountsMock: vi.fn() }))
 vi.mock("@/lib/accounts", () => ({ getMyAccounts: getMyAccountsMock }));
 
 const { ImportCsvModalMock } = vi.hoisted(() => ({
-  ImportCsvModalMock: vi.fn((_props: { accounts: { id: number }[] }) => (
-    <div data-testid="import-csv-modal-stub" />
-  )),
+  ImportCsvModalMock: vi.fn(() => <div data-testid="import-csv-modal-stub" />),
 }));
 vi.mock("@/components/ImportCsvModal", () => ({
   default: ImportCsvModalMock,
@@ -186,7 +184,9 @@ describe("SettingsPage", () => {
     });
     render(ui);
 
-    const passedAccounts = ImportCsvModalMock.mock.calls[0][0].accounts;
-    expect(passedAccounts.map((a: { id: number }) => a.id)).toEqual([1]);
+    const [props] = ImportCsvModalMock.mock.calls[0] as unknown as [
+      { accounts: { id: number }[] },
+    ];
+    expect(props.accounts.map((a) => a.id)).toEqual([1]);
   });
 });
