@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getMyAccounts } from "@/lib/accounts";
+import { selectableAccounts } from "@/lib/account-filters";
 import { getMyRecurringRules } from "@/lib/recurring-rules";
 import { getTransactions } from "@/lib/transactions";
 import { getForecast, type Forecast } from "@/lib/analytics";
@@ -106,7 +107,7 @@ export default async function DashboardPage() {
           <h1 className={styles.heroTitle}>Your money, in perspective.</h1>
           <p className={styles.heroSub}>A clearer view of today. A plan for tomorrow.</p>
         </div>
-        <AddTransactionModal accounts={accounts} />
+        <AddTransactionModal accounts={selectableAccounts(accounts)} />
       </div>
 
       <div className={styles.kpiGrid}>

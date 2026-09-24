@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 
 const { authMock } = vi.hoisted(() => ({ authMock: vi.fn() }));
 vi.mock("@/auth", () => ({ auth: authMock }));
@@ -18,6 +18,10 @@ const { getMyAccountsMock } = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/accounts", () => ({
   getMyAccounts: getMyAccountsMock,
+}));
+
+vi.mock("@/app/actions", () => ({
+  updateAccountFlagsAction: vi.fn(),
 }));
 
 import AccountsPage from "./page";
@@ -93,5 +97,63 @@ describe("AccountsPage", () => {
 
     expect(screen.getByText("No accounts yet.")).toBeInTheDocument();
     expect(screen.getByText("0 accounts")).toBeInTheDocument();
+  });
+
+  // S03.6: archived accounts move to their own section, but their balance
+  // stays in the total — "must not silently erase money/history from
+  // consolidated reporting."
+  it("counts an archived account's balance in the total but renders it only in the Archived section", async () => {
+    getMyAccountsMock.mockResolvedValue([
+      { id: 1, name: "Revolut", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, archived: false, protectedSavings: false, balance: "500.00" },
+      { id: 2, name: "Old account", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, archived: true, protectedSavings: false, balance: "300.00" },
+    ]);
+
+    const ui = await AccountsPage();
+    render(ui);
+
+    expect(screen.getByText("800,00")).toBeInTheDocument(); // total balance: 500 + 300
+
+    const mainGrid = screen.getByTestId("accounts-grid");
+    expect(within(mainGrid).queryByText("Old account")).not.toBeInTheDocument();
+
+    const archivedSection = screen.getByTestId("archived-accounts");
+    expect(within(archivedSection).getByText("Old account")).toBeInTheDocument();
+    expect(within(archivedSection).getByRole("button", { name: "Unarchive" })).toBeInTheDocument();
+  });
+
+  it("shows an Archive button on a non-archived account and no Archived section when none are archived", async () => {
+    getMyAccountsMock.mockResolvedValue([
+      { id: 1, name: "Revolut", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, archived: false, protectedSavings: false, balance: "500.00" },
+    ]);
+
+    const ui = await AccountsPage();
+    render(ui);
+
+    expect(screen.getByRole("button", { name: "Archive" })).toBeInTheDocument();
+    expect(screen.queryByTestId("archived-accounts")).not.toBeInTheDocument();
+  });
+
+  it("shows a protected-savings badge and an Unmark action on a protected-savings account", async () => {
+    getMyAccountsMock.mockResolvedValue([
+      { id: 1, name: "Emergency fund", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, archived: false, protectedSavings: true, balance: "1000.00" },
+    ]);
+
+    const ui = await AccountsPage();
+    render(ui);
+
+    expect(screen.getByText("Protected savings")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Unmark protected savings" })).toBeInTheDocument();
+  });
+
+  it("shows a Mark protected savings action on a non-protected account", async () => {
+    getMyAccountsMock.mockResolvedValue([
+      { id: 1, name: "Revolut", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, archived: false, protectedSavings: false, balance: "500.00" },
+    ]);
+
+    const ui = await AccountsPage();
+    render(ui);
+
+    expect(screen.queryByText("Protected savings")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mark protected savings" })).toBeInTheDocument();
   });
 });

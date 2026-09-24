@@ -194,6 +194,28 @@ describe('AccountsService', () => {
     expect(result.opening_boundary).toBe('start_of_day');
   });
 
+  // S03.6: findMine must expose archived/protectedSavings so the web
+  // accounts page can section/badge accounts without a second round trip.
+  it('findMine returns archived and protectedSavings alongside the other account fields', async () => {
+    const account = await prisma.account.create({
+      data: {
+        name: 'Savings',
+        currentBalance: new Prisma.Decimal('0'),
+        referenceDate: fromDateOnlyString('2026-01-01'),
+        openingBoundary: 'start_of_day',
+        archived: true,
+        protectedSavings: true,
+        userId,
+      },
+    });
+
+    const accounts = await service.findMine(userId);
+    const result = accounts.find((a) => a.id === account.id)!;
+
+    expect(result.archived).toBe(true);
+    expect(result.protectedSavings).toBe(true);
+  });
+
   // Epic 14 Sprint 2 Story 6 (closes S03.2): an unconfigured account's
   // "edit" is really its deferred initial configuration — completing it
   // flips configured to true so it stops being silently treated as a
@@ -285,6 +307,91 @@ describe('AccountsService', () => {
         { name: 'Hijacked', currentBalance: 0, referenceDate: '2026-01-01' },
         userId,
       ),
+    ).rejects.toThrow('Account does not belong to the current user');
+
+    await prisma.account.delete({ where: { id: otherAccount.id } });
+    await prisma.user.delete({ where: { id: otherUser.id } });
+  });
+
+  // S03.6: archive/unarchive + protected-savings are independent toggles
+  // from update()'s configure-on-first-edit flow — they must work on an
+  // already-configured account without touching balance/date.
+  it('updateFlags sets archived on an already-configured account', async () => {
+    const account = await prisma.account.create({
+      data: {
+        name: 'Cont curent',
+        currentBalance: new Prisma.Decimal(100),
+        referenceDate: fromDateOnlyString('2026-01-01'),
+        openingBoundary: 'start_of_day',
+        configured: true,
+        userId,
+      },
+    });
+
+    const updated = await service.updateFlags(account.id, { archived: true }, userId);
+
+    expect(updated.archived).toBe(true);
+    expect(updated.protectedSavings).toBe(false);
+  });
+
+  it('updateFlags sets protectedSavings without touching archived', async () => {
+    const account = await prisma.account.create({
+      data: {
+        name: 'Savings',
+        currentBalance: new Prisma.Decimal(0),
+        referenceDate: fromDateOnlyString('2026-01-01'),
+        openingBoundary: 'start_of_day',
+        configured: true,
+        archived: false,
+        userId,
+      },
+    });
+
+    const updated = await service.updateFlags(account.id, { protectedSavings: true }, userId);
+
+    expect(updated.protectedSavings).toBe(true);
+    expect(updated.archived).toBe(false);
+  });
+
+  it('updateFlags sets both fields in one call', async () => {
+    const account = await prisma.account.create({
+      data: {
+        name: 'Cont curent',
+        currentBalance: new Prisma.Decimal(0),
+        referenceDate: fromDateOnlyString('2026-01-01'),
+        openingBoundary: 'start_of_day',
+        configured: true,
+        userId,
+      },
+    });
+
+    const updated = await service.updateFlags(
+      account.id,
+      { archived: true, protectedSavings: true },
+      userId,
+    );
+
+    expect(updated.archived).toBe(true);
+    expect(updated.protectedSavings).toBe(true);
+  });
+
+  it('updateFlags rejects an account that does not belong to the caller', async () => {
+    const otherUser = await prisma.user.create({
+      data: { email: `other-flags-${Date.now()}@example.com`, passwordHash: 'x' },
+    });
+    const otherAccount = await prisma.account.create({
+      data: {
+        name: 'Not yours',
+        currentBalance: new Prisma.Decimal(0),
+        referenceDate: fromDateOnlyString('2026-01-01'),
+        openingBoundary: 'start_of_day',
+        configured: true,
+        userId: otherUser.id,
+      },
+    });
+
+    await expect(
+      service.updateFlags(otherAccount.id, { archived: true }, userId),
     ).rejects.toThrow('Account does not belong to the current user');
 
     await prisma.account.delete({ where: { id: otherAccount.id } });

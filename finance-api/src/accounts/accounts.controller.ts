@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, UseGuards } fr
 import { AccountsService } from './accounts.service.js';
 import { CreateAccountDto } from './dto/create-account.dto.js';
 import { UpdateAccountDto } from './dto/update-account.dto.js';
+import { UpdateAccountFlagsDto } from './dto/update-account-flags.dto.js';
 import { InternalAuthGuard } from '../auth/internal-auth.guard.js';
 import { CurrentUserId } from '../auth/current-user-id.decorator.js';
 
@@ -27,5 +28,14 @@ export class AccountsController {
     @CurrentUserId() userId: number,
   ) {
     return this.accountsService.update(id, dto, userId);
+  }
+
+  @Patch(':id/flags')
+  updateFlags(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateAccountFlagsDto,
+    @CurrentUserId() userId: number,
+  ) {
+    return this.accountsService.updateFlags(id, dto, userId);
   }
 }

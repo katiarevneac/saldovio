@@ -5,6 +5,7 @@ import { toBani, formatAmount } from "@/lib/money";
 import { computePercentOfTotal, formatPercent } from "@/lib/account-metrics";
 import KpiCard from "@/components/KpiCard";
 import { auth } from "@/auth";
+import { updateAccountFlagsAction } from "@/app/actions";
 import styles from "./page.module.css";
 
 function WalletIcon() {
@@ -23,7 +24,12 @@ export default async function AccountsPage() {
   }
 
   const accounts = await getMyAccounts();
+  // S03.6: archived accounts still count toward the total (must not
+  // silently erase money/history from consolidated reporting) — only the
+  // main grid excludes them, they move to their own section below.
   const totalBani = accounts.reduce((sum, account) => sum + toBani(account.balance), 0);
+  const visibleAccounts = accounts.filter((account) => !account.archived);
+  const archivedAccounts = accounts.filter((account) => account.archived);
 
   return (
     <div className={styles.page}>
@@ -46,11 +52,11 @@ export default async function AccountsPage() {
         caption={`Sum of ${accounts.length} account${accounts.length === 1 ? "" : "s"}, each balance already reflects its own reference date.`}
       />
 
-      {accounts.length === 0 ? (
+      {visibleAccounts.length === 0 && archivedAccounts.length === 0 ? (
         <p className={styles.emptyState}>No accounts yet.</p>
       ) : (
-        <div className={styles.accountsGrid}>
-          {accounts.map((account) => {
+        <div className={styles.accountsGrid} data-testid="accounts-grid">
+          {visibleAccounts.map((account) => {
             const accountBani = toBani(account.balance);
             const percent = computePercentOfTotal(accountBani, totalBani);
             return (
@@ -61,14 +67,64 @@ export default async function AccountsPage() {
                   <span>Reference date: {account.reference_date}</span>
                   <span>{formatPercent(percent)}</span>
                 </div>
+                {account.protectedSavings && (
+                  <span className={styles.badge}>Protected savings</span>
+                )}
                 {!account.configured && (
                   <Link href={`/accounts/${account.id}/edit`} className={styles.completeSetupLink}>
                     Complete setup
                   </Link>
                 )}
+                <div className={styles.cardActions}>
+                  <form
+                    action={updateAccountFlagsAction.bind(null, account.id, {
+                      protectedSavings: !account.protectedSavings,
+                    })}
+                  >
+                    <button type="submit" className={styles.flagButton}>
+                      {account.protectedSavings ? "Unmark protected savings" : "Mark protected savings"}
+                    </button>
+                  </form>
+                  <form
+                    action={updateAccountFlagsAction.bind(null, account.id, { archived: true })}
+                  >
+                    <button type="submit" className={styles.flagButton}>
+                      Archive
+                    </button>
+                  </form>
+                </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {archivedAccounts.length > 0 && (
+        <div data-testid="archived-accounts">
+          <h2 className={styles.archivedTitle}>Archived</h2>
+          <div className={styles.accountsGrid}>
+            {archivedAccounts.map((account) => {
+              const accountBani = toBani(account.balance);
+              return (
+                <div key={account.id} className={styles.accountCard}>
+                  <div className={styles.accountName}>{account.name}</div>
+                  <div className={styles.accountBalance}>{formatAmount(accountBani)}</div>
+                  <div className={styles.accountMeta}>
+                    <span>Reference date: {account.reference_date}</span>
+                  </div>
+                  <div className={styles.cardActions}>
+                    <form
+                      action={updateAccountFlagsAction.bind(null, account.id, { archived: false })}
+                    >
+                      <button type="submit" className={styles.flagButton}>
+                        Unarchive
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

@@ -21,19 +21,26 @@ model User {
 }
 
 model Account {
-  id              Int             @id @default(autoincrement())
-  name            String
-  currentBalance  Decimal         @map("current_balance") @db.Decimal(14, 2)
-  referenceDate   DateTime        @map("reference_date") @db.Date
+  id               Int             @id @default(autoincrement())
+  name             String
+  currentBalance   Decimal         @map("current_balance") @db.Decimal(14, 2)
+  referenceDate    DateTime        @map("reference_date") @db.Date
   // ADR 0002: legacy_inclusive (existing accounts, > reference_date) vs
   // start_of_day (new accounts, >= reference_date). No Prisma-level
   // default deliberately — every write path must set it explicitly.
-  openingBoundary String          @map("opening_boundary")
-  configured      Boolean         @default(true) @map("configured")
-  userId          Int             @map("user_id")
-  user            User            @relation(fields: [userId], references: [id])
-  transactions    Transaction[]
-  recurringRules  RecurringRule[]
+  openingBoundary  String          @map("opening_boundary")
+  configured       Boolean         @default(true) @map("configured")
+  // S03.6: archived hides an account from transaction/recurring-rule
+  // pickers only — its balance/history stay in every aggregate (total
+  // balance, /accounts, CSV export). protectedSavings is display-only
+  // for now (a badge); it does not change any calculated number until
+  // S08/S09's spendable-amount engine reads it.
+  archived         Boolean         @default(false) @map("archived")
+  protectedSavings Boolean         @default(false) @map("protected_savings")
+  userId           Int             @map("user_id")
+  user             User            @relation(fields: [userId], references: [id])
+  transactions     Transaction[]
+  recurringRules   RecurringRule[]
 
   @@map("accounts")
 }

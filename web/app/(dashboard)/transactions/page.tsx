@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getTransactions } from "@/lib/transactions";
 import { getMyAccounts } from "@/lib/accounts";
+import { selectableAccounts } from "@/lib/account-filters";
 import { auth } from "@/auth";
 import AddTransactionModal from "@/components/AddTransactionModal";
 import TransactionsExplorer from "@/components/TransactionsExplorer";
@@ -32,7 +33,7 @@ export default async function TransactionsPage() {
           <h1 className={styles.heroTitle}>Transactions</h1>
           <p className={styles.heroSub}>All transactions · {monthLabel}</p>
         </div>
-        <AddTransactionModal accounts={accounts} />
+        <AddTransactionModal accounts={selectableAccounts(accounts)} />
       </div>
 
       <TransactionsExplorer transactions={transactions} accountNameById={accountNameById} />

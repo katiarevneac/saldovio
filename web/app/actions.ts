@@ -89,6 +89,26 @@ export async function updateAccountAction(accountId: number, formData: FormData)
   redirect("/accounts");
 }
 
+export async function updateAccountFlagsAction(
+  accountId: number,
+  flags: { archived?: boolean; protectedSavings?: boolean },
+): Promise<void> {
+  const headers = await getAuthorizedHeaders();
+
+  const response = await fetch(`${FINANCE_API_URL}/accounts/${accountId}/flags`, {
+    method: "PATCH",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(flags),
+  });
+
+  if (!response.ok) {
+    const message = await extractApiErrorMessage(response, "Could not update account");
+    redirect(`/accounts?error=${encodeURIComponent(message)}`);
+  }
+
+  redirect("/accounts");
+}
+
 export async function createRecurringRuleAction(formData: FormData): Promise<void> {
   const parsed = CreateRecurringRuleSchema.safeParse({
     accountId: formData.get("accountId"),

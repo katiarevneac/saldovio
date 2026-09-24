@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createRecurringRuleAction } from "@/app/actions";
 import { getMyAccounts } from "@/lib/accounts";
+import { selectableAccounts } from "@/lib/account-filters";
 import { auth } from "@/auth";
 import styles from "./page.module.css";
 
@@ -13,10 +14,11 @@ export default async function NewRecurringRulePage(
     redirect("/login");
   }
 
-  const [searchParams, accounts] = await Promise.all([
+  const [searchParams, allAccounts] = await Promise.all([
     props.searchParams,
     getMyAccounts(),
   ]);
+  const accounts = selectableAccounts(allAccounts);
   const errorMessage =
     typeof searchParams.error === "string" ? searchParams.error : null;
 

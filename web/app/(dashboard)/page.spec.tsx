@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, fireEvent } from "@testing-library/react";
 
 const { authMock } = vi.hoisted(() => ({ authMock: vi.fn() }));
 vi.mock("@/auth", () => ({
@@ -174,6 +174,24 @@ describe("DashboardPage", () => {
     expect(
       within(accountsSection).getByRole("link", { name: "View all accounts" })
     ).toHaveAttribute("href", "/accounts");
+  });
+
+  // S03.6: archived accounts stay visible in the condensed Accounts card
+  // (balance/history must not silently disappear) but are excluded from
+  // the account picker used to record new transactions.
+  it("excludes an archived account from the add-transaction account picker", async () => {
+    getMyAccountsMock.mockResolvedValue([
+      { id: 1, name: "Active", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, archived: false, protectedSavings: false, balance: "10.00" },
+      { id: 2, name: "Old account", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, archived: true, protectedSavings: false, balance: "20.00" },
+    ]);
+    getTransactionsMock.mockResolvedValue([]);
+
+    const ui = await DashboardPage();
+    render(ui);
+    fireEvent.click(screen.getByRole("button", { name: "+ Add transaction" }));
+
+    expect(screen.getByRole("option", { name: "Active" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Old account" })).not.toBeInTheDocument();
   });
 
   it("shows up to 5 condensed recent transactions with a link to the full list", async () => {

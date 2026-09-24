@@ -9,6 +9,8 @@ export type Account = {
   reference_date: string;
   opening_boundary: "legacy_inclusive" | "start_of_day";
   configured: boolean;
+  archived: boolean;
+  protectedSavings: boolean;
   balance: string;
 };
 

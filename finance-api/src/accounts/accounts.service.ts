@@ -5,6 +5,7 @@ import { toDecimalString, toDateOnlyString, fromDateOnlyString } from '../common
 import { ClockService } from '../common/clock.service.js';
 import { CreateAccountDto } from './dto/create-account.dto.js';
 import { UpdateAccountDto } from './dto/update-account.dto.js';
+import { UpdateAccountFlagsDto } from './dto/update-account-flags.dto.js';
 
 type AccountWithBalanceRow = {
   id: number;
@@ -13,6 +14,8 @@ type AccountWithBalanceRow = {
   reference_date: Date;
   configured: boolean;
   opening_boundary: 'legacy_inclusive' | 'start_of_day';
+  archived: boolean;
+  protected_savings: boolean;
   balance: Prisma.Decimal;
 };
 
@@ -88,6 +91,32 @@ export class AccountsService {
     };
   }
 
+  // S03.6: archive/unarchive + protected-savings marking. Independent of
+  // update()'s configure-on-first-edit flow — works on any account
+  // regardless of `configured`, never touches balance/reference_date.
+  async updateFlags(id: number, dto: UpdateAccountFlagsDto, userId: number) {
+    const existing = await this.prisma.account.findFirst({
+      where: { id, userId },
+    });
+    if (!existing) {
+      throw new ForbiddenException('Account does not belong to the current user');
+    }
+
+    const account = await this.prisma.account.update({
+      where: { id },
+      data: {
+        ...(dto.archived !== undefined ? { archived: dto.archived } : {}),
+        ...(dto.protectedSavings !== undefined ? { protectedSavings: dto.protectedSavings } : {}),
+      },
+    });
+
+    return {
+      id: account.id,
+      archived: account.archived,
+      protectedSavings: account.protectedSavings,
+    };
+  }
+
   async findMine(userId: number) {
     // ADR 0002: two boundary conventions coexist on purpose.
     // legacy_inclusive accounts keep the original ">" comparison (a
@@ -110,6 +139,8 @@ export class AccountsService {
         a.reference_date,
         a.configured,
         a.opening_boundary,
+        a.archived,
+        a.protected_savings,
         a.current_balance + COALESCE(
           SUM(t.amount) FILTER (
             WHERE t.occurred_on <= ${calculationDate}
@@ -133,6 +164,8 @@ export class AccountsService {
       reference_date: toDateOnlyString(row.reference_date),
       configured: row.configured,
       opening_boundary: row.opening_boundary,
+      archived: row.archived,
+      protectedSavings: row.protected_savings,
       balance: toDecimalString(row.balance),
     }));
   }

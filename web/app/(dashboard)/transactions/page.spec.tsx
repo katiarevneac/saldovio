@@ -1,6 +1,6 @@
 // web/app/(dashboard)/transactions/page.spec.tsx
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 
 const { authMock } = vi.hoisted(() => ({ authMock: vi.fn() }));
 vi.mock("@/auth", () => ({ auth: authMock }));
@@ -78,6 +78,29 @@ describe("TransactionsPage", () => {
     // Story 3's page.spec.tsx fix for the Overview "condensed accounts" test).
     expect(screen.getAllByText("Revolut").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "+ Add transaction" })).toBeInTheDocument();
+  });
+
+  // S03.6: an archived account's transactions still show its real name
+  // (the account-name map keeps every account), but the account can't be
+  // picked for a NEW transaction.
+  it("excludes an archived account from the add-transaction picker but keeps its name on existing rows", async () => {
+    getTransactionsMock.mockResolvedValue([
+      { id: 1, account_id: 2, type: "expense", amount: "-10.00", occurred_on: "2026-09-14", category: "Transport" },
+    ]);
+    getMyAccountsMock.mockResolvedValue([
+      { id: 1, name: "Active", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, archived: false, protectedSavings: false, balance: "100.00" },
+      { id: 2, name: "Old account", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, archived: true, protectedSavings: false, balance: "50.00" },
+    ]);
+
+    const ui = await TransactionsPage();
+    render(ui);
+
+    expect(screen.getByText("Old account")).toBeInTheDocument(); // still names the row's account
+
+    fireEvent.click(screen.getByRole("button", { name: "+ Add transaction" }));
+
+    expect(screen.getByRole("option", { name: "Active" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Old account" })).not.toBeInTheDocument();
   });
 
   it("renders the fixed header text with a single transaction and no accounts", async () => {
