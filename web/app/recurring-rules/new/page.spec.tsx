@@ -52,4 +52,22 @@ describe("NewRecurringRulePage", () => {
     expect(screen.getByRole("option", { name: "Active" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "Old account" })).not.toBeInTheDocument();
   });
+
+  // S03.6: archiving every account makes this reachable for the first
+  // time — show an explicit message instead of a submittable form with an
+  // empty account picker.
+  it("shows a no-accounts message instead of the form when every account is archived", async () => {
+    getMyAccountsMock.mockResolvedValue([
+      { id: 1, name: "Old account", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, archived: true, protectedSavings: false, balance: "50.00" },
+    ]);
+
+    const ui = await NewRecurringRulePage({
+      params: Promise.resolve({}),
+      searchParams: Promise.resolve({}),
+    });
+    render(ui);
+
+    expect(screen.getByText(/No accounts available/)).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Account" })).not.toBeInTheDocument();
+  });
 });

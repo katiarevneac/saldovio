@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getMySettings } from "@/lib/settings";
 import { getMyAccounts } from "@/lib/accounts";
+import { selectableAccounts } from "@/lib/account-filters";
 import { updateSettingsAction, deleteAccountAction } from "@/app/actions";
 import ImportCsvModal from "@/components/ImportCsvModal";
 import styles from "./page.module.css";
@@ -97,7 +98,7 @@ export default async function SettingsPage(props: PageProps<"/settings">) {
           <a href="/api/export" className={styles.exportButton}>
             Export CSV
           </a>
-          <ImportCsvModal accounts={accounts} />
+          <ImportCsvModal accounts={selectableAccounts(accounts)} />
         </div>
 
         <div className={styles.deleteSection}>

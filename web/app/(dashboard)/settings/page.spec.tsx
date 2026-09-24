@@ -17,8 +17,13 @@ vi.mock("@/lib/settings", () => ({ getMySettings: getMySettingsMock }));
 const { getMyAccountsMock } = vi.hoisted(() => ({ getMyAccountsMock: vi.fn() }));
 vi.mock("@/lib/accounts", () => ({ getMyAccounts: getMyAccountsMock }));
 
+const { ImportCsvModalMock } = vi.hoisted(() => ({
+  ImportCsvModalMock: vi.fn((_props: { accounts: { id: number }[] }) => (
+    <div data-testid="import-csv-modal-stub" />
+  )),
+}));
 vi.mock("@/components/ImportCsvModal", () => ({
-  default: () => <div data-testid="import-csv-modal-stub" />,
+  default: ImportCsvModalMock,
 }));
 
 // Mocking "@/app/actions" keeps the real Server Action — which imports
@@ -36,6 +41,7 @@ beforeEach(() => {
   redirectMock.mockClear();
   getMySettingsMock.mockReset();
   getMyAccountsMock.mockReset();
+  ImportCsvModalMock.mockClear();
 
   authMock.mockResolvedValue({ user: { id: "1", email: "test@example.com" } });
   getMySettingsMock.mockResolvedValue({
@@ -163,5 +169,24 @@ describe("SettingsPage", () => {
     });
 
     expect(getMyAccountsMock).toHaveBeenCalledTimes(1);
+  });
+
+  // S03.6: CSV import creates new transaction rows in the target account —
+  // the same "pick an account for NEW money" action the transaction and
+  // recurring-rule pickers already exclude archived accounts from.
+  it("excludes archived accounts from ImportCsvModal's account list", async () => {
+    getMyAccountsMock.mockResolvedValue([
+      { id: 1, name: "Active", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, archived: false, protectedSavings: false, balance: "100.00" },
+      { id: 2, name: "Old account", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, archived: true, protectedSavings: false, balance: "50.00" },
+    ]);
+
+    const ui = await SettingsPage({
+      params: Promise.resolve({}),
+      searchParams: Promise.resolve({}),
+    });
+    render(ui);
+
+    const passedAccounts = ImportCsvModalMock.mock.calls[0][0].accounts;
+    expect(passedAccounts.map((a: { id: number }) => a.id)).toEqual([1]);
   });
 });

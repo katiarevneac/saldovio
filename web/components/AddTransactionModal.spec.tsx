@@ -53,4 +53,20 @@ describe("AddTransactionModal", () => {
       screen.queryByRole("heading", { name: "Add transaction" })
     ).not.toBeInTheDocument();
   });
+
+  // S03.6: archiving every account makes this reachable for the first
+  // time — previously an account list was never empty for a signed-up
+  // user. Disable rather than let the form submit with no valid account.
+  it("disables the trigger and does not open when there are no selectable accounts", () => {
+    render(<AddTransactionModal accounts={[]} />);
+
+    const trigger = screen.getByRole("button", { name: "+ Add transaction" });
+    expect(trigger).toBeDisabled();
+
+    fireEvent.click(trigger);
+
+    expect(
+      screen.queryByRole("heading", { name: "Add transaction" })
+    ).not.toBeInTheDocument();
+  });
 });

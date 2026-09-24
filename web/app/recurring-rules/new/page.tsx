@@ -28,6 +28,9 @@ export default async function NewRecurringRulePage(
 
       {errorMessage && <p className={styles.error}>{errorMessage}</p>}
 
+      {accounts.length === 0 ? (
+        <p>No accounts available — unarchive an account or create one first.</p>
+      ) : (
       <form className={styles.form} action={createRecurringRuleAction}>
         <div className={styles.field}>
           <label htmlFor="accountId">Account</label>
@@ -79,6 +82,7 @@ export default async function NewRecurringRulePage(
 
         <button type="submit">Create recurring rule</button>
       </form>
+      )}
 
       <p>
         <Link href="/">Back to dashboard</Link>

@@ -9,9 +9,17 @@ import styles from "./AddTransactionModal.module.css";
 export default function AddTransactionModal({ accounts }: { accounts: Account[] }) {
   const [open, setOpen] = useState(false);
 
+  const hasSelectableAccount = accounts.length > 0;
+
   return (
     <>
-      <button type="button" className={styles.trigger} onClick={() => setOpen(true)}>
+      <button
+        type="button"
+        className={styles.trigger}
+        onClick={() => setOpen(true)}
+        disabled={!hasSelectableAccount}
+        title={hasSelectableAccount ? undefined : "No accounts available — unarchive one first"}
+      >
         + Add transaction
       </button>
       <Modal open={open} onClose={() => setOpen(false)} title="Add transaction">
