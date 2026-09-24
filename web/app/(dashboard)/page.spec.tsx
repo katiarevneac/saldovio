@@ -123,7 +123,7 @@ describe("DashboardPage", () => {
           name: "Cont curent",
           current_balance: "0.00",
           reference_date: "2026-01-01",
-          opening_boundary: "start_of_day" as const,
+          opening_boundary: "start_of_day" as const, configured: true,
           balance: "1000.00",
         },
       ]);
@@ -150,10 +150,10 @@ describe("DashboardPage", () => {
 
   it("shows up to 3 condensed accounts with a link to the full list", async () => {
     getMyAccountsMock.mockResolvedValue([
-      { id: 1, name: "A1", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, balance: "10.00" },
-      { id: 2, name: "A2", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, balance: "20.00" },
-      { id: 3, name: "A3", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, balance: "30.00" },
-      { id: 4, name: "A4", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, balance: "40.00" },
+      { id: 1, name: "A1", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, balance: "10.00" },
+      { id: 2, name: "A2", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, balance: "20.00" },
+      { id: 3, name: "A3", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, balance: "30.00" },
+      { id: 4, name: "A4", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, balance: "40.00" },
     ]);
     getTransactionsMock.mockResolvedValue([]);
 

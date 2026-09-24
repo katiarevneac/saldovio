@@ -193,6 +193,103 @@ describe('AccountsService', () => {
 
     expect(result.opening_boundary).toBe('start_of_day');
   });
+
+  // Epic 14 Sprint 2 Story 6 (closes S03.2): an unconfigured account's
+  // "edit" is really its deferred initial configuration — completing it
+  // flips configured to true so it stops being silently treated as a
+  // real financial situation before the user has entered anything.
+  it('update sets name/currentBalance/referenceDate and flips configured to true on an unconfigured account', async () => {
+    const account = await prisma.account.create({
+      data: {
+        name: 'Cont curent',
+        currentBalance: new Prisma.Decimal(0),
+        referenceDate: fromDateOnlyString('2026-09-20'),
+        openingBoundary: 'start_of_day',
+        configured: false,
+        userId,
+      },
+    });
+
+    const updated = await service.update(
+      account.id,
+      { name: 'Revolut', currentBalance: 1500.75, referenceDate: '2026-09-24' },
+      userId,
+    );
+
+    expect(updated.name).toBe('Revolut');
+    expect(updated.current_balance).toBe('1500.75');
+    expect(updated.reference_date).toBe('2026-09-24');
+    expect(updated.configured).toBe(true);
+  });
+
+  it('update rejects changing currentBalance/referenceDate on an already-configured account', async () => {
+    const account = await prisma.account.create({
+      data: {
+        name: 'Cont curent',
+        currentBalance: new Prisma.Decimal(100),
+        referenceDate: fromDateOnlyString('2026-01-01'),
+        openingBoundary: 'start_of_day',
+        configured: true,
+        userId,
+      },
+    });
+
+    await expect(
+      service.update(
+        account.id,
+        { name: 'Cont curent', currentBalance: 999, referenceDate: '2026-01-01' },
+        userId,
+      ),
+    ).rejects.toThrow(/already configured/i);
+  });
+
+  it('update allows renaming an already-configured account when balance/date are unchanged', async () => {
+    const account = await prisma.account.create({
+      data: {
+        name: 'Cont curent',
+        currentBalance: new Prisma.Decimal(100),
+        referenceDate: fromDateOnlyString('2026-01-01'),
+        openingBoundary: 'start_of_day',
+        configured: true,
+        userId,
+      },
+    });
+
+    const updated = await service.update(
+      account.id,
+      { name: 'Renamed', currentBalance: 100, referenceDate: '2026-01-01' },
+      userId,
+    );
+
+    expect(updated.name).toBe('Renamed');
+  });
+
+  it('update rejects an account that does not belong to the caller', async () => {
+    const otherUser = await prisma.user.create({
+      data: { email: `other-${Date.now()}@example.com`, passwordHash: 'x' },
+    });
+    const otherAccount = await prisma.account.create({
+      data: {
+        name: 'Not yours',
+        currentBalance: new Prisma.Decimal(0),
+        referenceDate: fromDateOnlyString('2026-01-01'),
+        openingBoundary: 'start_of_day',
+        configured: false,
+        userId: otherUser.id,
+      },
+    });
+
+    await expect(
+      service.update(
+        otherAccount.id,
+        { name: 'Hijacked', currentBalance: 0, referenceDate: '2026-01-01' },
+        userId,
+      ),
+    ).rejects.toThrow('Account does not belong to the current user');
+
+    await prisma.account.delete({ where: { id: otherAccount.id } });
+    await prisma.user.delete({ where: { id: otherUser.id } });
+  });
 });
 
 // Local helper — offsets a UTC-midnight Date by `days` (may be negative)

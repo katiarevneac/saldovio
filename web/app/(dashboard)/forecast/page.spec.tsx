@@ -40,7 +40,7 @@ beforeEach(() => {
 
   authMock.mockResolvedValue({ user: { id: "1", email: "test@example.com" } });
   getMyAccountsMock.mockResolvedValue([
-    { id: 1, name: "Cont curent", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, balance: "1000.00" },
+    { id: 1, name: "Cont curent", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, balance: "1000.00" },
   ]);
   getMyRecurringRulesMock.mockResolvedValue([]);
   getMySettingsMock.mockResolvedValue({ essential_spend: null, payday: null, horizon_days: 30 });
@@ -83,7 +83,7 @@ describe("ForecastPage", () => {
 
   it("shows the account-derived total balance as 'Current balance', not dailyBalances[0] (which may already include a same-day rule occurrence)", async () => {
     getMyAccountsMock.mockResolvedValue([
-      { id: 1, name: "Cont curent", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, balance: "1000.00" },
+      { id: 1, name: "Cont curent", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, balance: "1000.00" },
     ]);
     getForecastMock.mockResolvedValue({
       forecastBalance: "1200.00",

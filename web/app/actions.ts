@@ -5,7 +5,7 @@ import { signOut } from "@/auth";
 import { FINANCE_API_URL } from "@/lib/config";
 import { getAuthorizedHeaders } from "@/lib/internal-auth";
 import { extractApiErrorMessage } from "@/lib/api-errors";
-import { CreateAccountSchema } from "@/lib/schemas/accounts";
+import { CreateAccountSchema, UpdateAccountSchema } from "@/lib/schemas/accounts";
 import { CreateRecurringRuleSchema } from "@/lib/schemas/recurring-rules";
 import { UpdateSettingsSchema, DeleteAccountSchema } from "@/lib/schemas/settings";
 import type { ImportPreviewRow, ImportCommitRow } from "@/lib/import";
@@ -57,6 +57,33 @@ export async function createAccountAction(formData: FormData): Promise<void> {
   if (!response.ok) {
     const message = await extractApiErrorMessage(response, "Could not create account");
     redirect(`/accounts/new?error=${encodeURIComponent(message)}`);
+  }
+
+  redirect("/accounts");
+}
+
+export async function updateAccountAction(accountId: number, formData: FormData): Promise<void> {
+  const parsed = UpdateAccountSchema.safeParse({
+    name: formData.get("name"),
+    currentBalance: formData.get("currentBalance"),
+    referenceDate: formData.get("referenceDate"),
+  });
+  if (!parsed.success) {
+    const message = parsed.error.issues.map((issue) => issue.message).join(", ");
+    redirect(`/accounts/${accountId}/edit?error=${encodeURIComponent(message)}`);
+  }
+
+  const headers = await getAuthorizedHeaders();
+
+  const response = await fetch(`${FINANCE_API_URL}/accounts/${accountId}`, {
+    method: "PATCH",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(parsed.data),
+  });
+
+  if (!response.ok) {
+    const message = await extractApiErrorMessage(response, "Could not update account");
+    redirect(`/accounts/${accountId}/edit?error=${encodeURIComponent(message)}`);
   }
 
   redirect("/accounts");

@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { toDecimalString, toDateOnlyString, fromDateOnlyString } from '../common/serialization.js';
 import { ClockService } from '../common/clock.service.js';
 import { CreateAccountDto } from './dto/create-account.dto.js';
+import { UpdateAccountDto } from './dto/update-account.dto.js';
 
 type AccountWithBalanceRow = {
   id: number;
@@ -41,6 +42,49 @@ export class AccountsService {
       name: account.name,
       current_balance: toDecimalString(account.currentBalance),
       reference_date: toDateOnlyString(account.referenceDate),
+    };
+  }
+
+  // S03.2/Epic 14 Sprint 2 Story 6: an unconfigured account's "edit" is
+  // its deferred initial configuration, completing it flips configured
+  // to true. An already-configured account can only be renamed here —
+  // changing its balance/reference date is S03.7's previewed
+  // reconciliation flow (not built yet), never a blind overwrite of a
+  // snapshot that may already be reflected in real usage.
+  async update(id: number, dto: UpdateAccountDto, userId: number) {
+    const existing = await this.prisma.account.findFirst({
+      where: { id, userId },
+    });
+    if (!existing) {
+      throw new ForbiddenException('Account does not belong to the current user');
+    }
+
+    if (existing.configured) {
+      const balanceUnchanged = existing.currentBalance.equals(new Prisma.Decimal(dto.currentBalance));
+      const dateUnchanged = toDateOnlyString(existing.referenceDate) === dto.referenceDate;
+      if (!balanceUnchanged || !dateUnchanged) {
+        throw new BadRequestException(
+          'This account is already configured — its opening balance/reference date can only be corrected through the reconciliation flow, not overwritten directly.',
+        );
+      }
+    }
+
+    const account = await this.prisma.account.update({
+      where: { id },
+      data: {
+        name: dto.name,
+        currentBalance: new Prisma.Decimal(dto.currentBalance),
+        referenceDate: fromDateOnlyString(dto.referenceDate),
+        configured: true,
+      },
+    });
+
+    return {
+      id: account.id,
+      name: account.name,
+      current_balance: toDecimalString(account.currentBalance),
+      reference_date: toDateOnlyString(account.referenceDate),
+      configured: account.configured,
     };
   }
 

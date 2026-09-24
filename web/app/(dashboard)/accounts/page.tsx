@@ -61,6 +61,11 @@ export default async function AccountsPage() {
                   <span>Reference date: {account.reference_date}</span>
                   <span>{formatPercent(percent)}</span>
                 </div>
+                {!account.configured && (
+                  <Link href={`/accounts/${account.id}/edit`} className={styles.completeSetupLink}>
+                    Complete setup
+                  </Link>
+                )}
               </div>
             );
           })}

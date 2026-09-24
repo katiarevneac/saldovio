@@ -42,8 +42,8 @@ describe("AccountsPage", () => {
 
   it("renders the total balance and each account's balance, reference date, and share of total", async () => {
     getMyAccountsMock.mockResolvedValue([
-      { id: 1, name: "Revolut", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, balance: "7500.00" },
-      { id: 2, name: "Cash", current_balance: "0.00", reference_date: "2026-03-01", opening_boundary: "start_of_day" as const, balance: "2500.00" },
+      { id: 1, name: "Revolut", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, balance: "7500.00" },
+      { id: 2, name: "Cash", current_balance: "0.00", reference_date: "2026-03-01", opening_boundary: "start_of_day" as const, configured: true, balance: "2500.00" },
     ]);
 
     const ui = await AccountsPage();
@@ -61,14 +61,28 @@ describe("AccountsPage", () => {
 
   it("shows an explicit unavailable percentage instead of a fabricated value when accounts net to zero", async () => {
     getMyAccountsMock.mockResolvedValue([
-      { id: 1, name: "Revolut", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, balance: "500.00" },
-      { id: 2, name: "Loan", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, balance: "-500.00" },
+      { id: 1, name: "Revolut", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, balance: "500.00" },
+      { id: 2, name: "Loan", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, balance: "-500.00" },
     ]);
 
     const ui = await AccountsPage();
     render(ui);
 
     expect(screen.getAllByText("% of total: unavailable").length).toBe(2);
+  });
+
+  it("shows a Complete setup link for an unconfigured account, and none for a configured one", async () => {
+    getMyAccountsMock.mockResolvedValue([
+      { id: 1, name: "Cont curent", current_balance: "0.00", reference_date: "2026-09-20", opening_boundary: "start_of_day" as const, configured: false, balance: "0.00" },
+      { id: 2, name: "Revolut", current_balance: "0.00", reference_date: "2026-01-01", opening_boundary: "start_of_day" as const, configured: true, balance: "500.00" },
+    ]);
+
+    const ui = await AccountsPage();
+    render(ui);
+
+    const links = screen.getAllByRole("link", { name: "Complete setup" });
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAttribute("href", "/accounts/1/edit");
   });
 
   it("shows an empty state and no cards when the user has no accounts", async () => {

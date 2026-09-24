@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { AccountsService } from './accounts.service.js';
 import { CreateAccountDto } from './dto/create-account.dto.js';
+import { UpdateAccountDto } from './dto/update-account.dto.js';
 import { InternalAuthGuard } from '../auth/internal-auth.guard.js';
 import { CurrentUserId } from '../auth/current-user-id.decorator.js';
 
@@ -17,5 +18,14 @@ export class AccountsController {
   @Get('me')
   findMine(@CurrentUserId() userId: number) {
     return this.accountsService.findMine(userId);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateAccountDto,
+    @CurrentUserId() userId: number,
+  ) {
+    return this.accountsService.update(id, dto, userId);
   }
 }

@@ -20,7 +20,7 @@ const accounts = [
     name: "Cont curent",
     current_balance: "0.00",
     reference_date: "2026-09-15",
-    opening_boundary: "start_of_day" as const,
+    opening_boundary: "start_of_day" as const, configured: true,
     balance: "100.00",
   },
 ];
