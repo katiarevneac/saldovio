@@ -130,6 +130,14 @@ export class AccountsService {
     // Kept as raw SQL — Prisma's query builder has no equivalent to a
     // FILTER-clause conditional aggregate, and the base query was already
     // validated in psql when first written (Sprint 4 S1).
+    //
+    // S03.3 gap fix (2026-09-25): `lifecycle = 'actual'` closes a real
+    // hole — the write-time guard (transactions.service.ts) only rejects
+    // an 'actual' transaction dated in the future, nothing stops a
+    // 'planned' one dated today or earlier, which used to inflate this
+    // balance despite S02.5/S02.8's "planned never affects actual
+    // balance" rule. Not reachable from the web UI yet (no 'planned'
+    // option exposed there), but reachable via a direct API call.
     const calculationDate = this.clock.today();
     const rows = await this.prisma.$queryRaw<AccountWithBalanceRow[]>`
       SELECT
@@ -143,7 +151,8 @@ export class AccountsService {
         a.protected_savings,
         a.current_balance + COALESCE(
           SUM(t.amount) FILTER (
-            WHERE t.occurred_on <= ${calculationDate}
+            WHERE t.lifecycle = 'actual'
+              AND t.occurred_on <= ${calculationDate}
               AND (
                 (a.opening_boundary = 'legacy_inclusive' AND t.occurred_on > a.reference_date)
                 OR (a.opening_boundary = 'start_of_day' AND t.occurred_on >= a.reference_date)

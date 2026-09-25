@@ -160,11 +160,11 @@ Acceptance: independent worked examples resolve every rule, schemas and constrai
 
 ## 7. S03 — correct balances and account initialization
 
-- [ ] S03.1 Add regression tests for new-user same-day income/expense and for existing inclusive snapshots before modifying the calculation.
-- [ ] S03.2 Stop silently presenting the auto-created zero account as a configured financial situation. Mark it unconfigured and complete it through onboarding, or replace it through a controlled migration path.
-- [ ] S03.3 Apply opening-boundary semantics and an upper calculation-date bound to current balance queries. Exclude voided/planned records.
-- [ ] S03.4 Accept past history for reporting while explaining which entries are already represented in the opening snapshot. Show the effect before saving/importing backdated entries.
-- [ ] S03.5 Prevent future-dated actual transactions; offer a planned item instead. Review existing future entries explicitly rather than silently recategorizing all of them.
+- [x] S03.1 Add regression tests for new-user same-day income/expense and for existing inclusive snapshots before modifying the calculation.
+- [x] S03.2 Stop silently presenting the auto-created zero account as a configured financial situation. Mark it unconfigured and complete it through onboarding, or replace it through a controlled migration path.
+- [x] S03.3 Apply opening-boundary semantics and an upper calculation-date bound to current balance queries. Exclude voided/planned records. **Gap found and fixed 2026-09-25: `AccountsService.findMine`'s balance SQL had the opening-boundary and upper-bound halves but never filtered `lifecycle = 'actual'` — a `planned` transaction dated today or earlier (creatable via direct API call; not reachable from the web UI, which doesn't expose a `planned` option yet) would have inflated the balance. Fixed by adding `t.lifecycle = 'actual'` to the FILTER clause, with a regression test.**
+- [x] S03.4 Accept past history for reporting while explaining which entries are already represented in the opening snapshot. Show the effect before saving/importing backdated entries.
+- [x] S03.5 Prevent future-dated actual transactions; offer a planned item instead. Review existing future entries explicitly rather than silently recategorizing all of them.
 - [x] S03.6 Provide account name/purpose editing, protected-savings configuration, and archive/unarchive. Archiving hides an account from routine selection; it must not silently erase its money/history from consolidated reporting.
 - [x] S03.7 Route opening-balance corrections on active accounts through a previewed reconciliation/adjustment flow. Do not overwrite snapshots without showing downstream impact.
 

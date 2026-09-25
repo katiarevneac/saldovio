@@ -336,6 +336,38 @@ describe('AccountsService', () => {
     await prisma.user.delete({ where: { id: otherUser.id } });
   });
 
+  // S03.3 gap (found 2026-09-25): findMine had no lifecycle filter — a
+  // 'planned' transaction dated today or earlier would incorrectly count
+  // toward the balance. S02.5/S02.8: planned entries never affect actual
+  // current balance, regardless of date.
+  it('excludes a planned transaction dated today or earlier from the balance', async () => {
+    const today = todayDateOnly();
+    const account = await prisma.account.create({
+      data: {
+        name: 'Planned test',
+        currentBalance: new Prisma.Decimal('100.00'),
+        referenceDate: fromDateOnlyString('2026-01-01'),
+        openingBoundary: 'start_of_day',
+        userId,
+      },
+    });
+
+    await prisma.transaction.create({
+      data: {
+        accountId: account.id,
+        type: 'income',
+        amount: new Prisma.Decimal('500.00'),
+        occurredOn: today,
+        lifecycle: 'planned',
+      },
+    });
+
+    const accounts = await service.findMine(userId);
+    const result = accounts.find((a) => a.id === account.id)!;
+
+    expect(result.balance).toBe('100');
+  });
+
   // S03.6: archive/unarchive + protected-savings are independent toggles
   // from update()'s configure-on-first-edit flow — they must work on an
   // already-configured account without touching balance/date.
