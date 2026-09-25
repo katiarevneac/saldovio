@@ -10,6 +10,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle, seconds } from '@nestjs/throttler';
 import { TransactionsService } from './transactions.service.js';
 import { CreateTransactionDto } from './dto/create-transaction.dto.js';
 import { ImportPreviewDto } from './dto/import-preview.dto.js';
@@ -27,6 +28,7 @@ const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 export class TransactionsController {
   constructor(private readonly transactionsService: TransactionsService) {}
 
+  @Throttle({ default: { limit: 30, ttl: seconds(60) } })
   @Post()
   create(@Body() dto: CreateTransactionDto, @CurrentUserId() userId: number) {
     return this.transactionsService.create(dto, userId);
@@ -37,6 +39,7 @@ export class TransactionsController {
     return this.transactionsService.findAll(userId);
   }
 
+  @Throttle({ default: { limit: 10, ttl: seconds(60) } })
   @Post('import/preview')
   @UseInterceptors(
     FileInterceptor('file', { limits: { fileSize: MAX_UPLOAD_BYTES } }),
@@ -52,6 +55,7 @@ export class TransactionsController {
     return this.transactionsService.previewImport(dto.accountId, file.buffer, userId);
   }
 
+  @Throttle({ default: { limit: 10, ttl: seconds(60) } })
   @Post('import/commit')
   commitImport(@Body() dto: ImportCommitDto, @CurrentUserId() userId: number) {
     return this.transactionsService.commitImport(dto.accountId, dto.rows, userId);

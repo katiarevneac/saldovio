@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Patch, Post, UseGuards } from '@nestjs/common';
+import { Throttle, seconds } from '@nestjs/throttler';
 import { UsersService } from './users.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateSettingsDto } from './dto/update-settings.dto.js';
@@ -10,6 +11,7 @@ import { CurrentUserId } from '../auth/current-user-id.decorator.js';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @Throttle({ default: { limit: 5, ttl: seconds(60) } })
   @Post()
   create(@Body() dto: CreateUserDto) {
     return this.usersService.create(dto);

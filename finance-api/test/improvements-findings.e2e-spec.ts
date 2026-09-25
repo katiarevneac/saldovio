@@ -45,15 +45,13 @@ describe('improvements.md P0 findings (e2e)', () => {
     await app.close();
   });
 
-  // improvements.md F11c (P0): no rate limiting exists anywhere in
-  // finance-api (zero hits for throttle/rate-limit in the whole service).
-  // POST /auth/login runs a full bcrypt.compare per attempt with no
-  // backoff, allowing unlimited credential stuffing against a real
-  // account.
-  //
-  // EXPECTED (once F11c is fixed): repeated rapid wrong-password attempts
-  // against the same account eventually return 429.
-  // CURRENT (proves the finding): every attempt returns 401, none 429.
+  // improvements.md F11c (P0): POST /auth/login previously ran a full
+  // bcrypt.compare per attempt with no backoff, allowing unlimited
+  // credential stuffing against a real account. Fixed (S04.4): a global
+  // ThrottlerModule guard plus a tight @Throttle(5/60s) override on
+  // POST /auth/login — repeated rapid wrong-password attempts against the
+  // same account now return 429 well before the 20-attempt burst below
+  // completes.
   it(
     'F11c: rapid repeated wrong-password login attempts are never rate-limited',
     async () => {
