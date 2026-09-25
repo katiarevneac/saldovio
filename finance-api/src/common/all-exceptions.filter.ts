@@ -22,6 +22,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
 
+    // improvements.md S04.16: Guards (e.g. InternalAuthGuard) run before
+    // Interceptors in Nest's pipeline, so a guard-rejected request (401/403)
+    // never reaches NoCacheInterceptor — this filter is every exception's
+    // common choke point regardless of where it originated (guard, pipe, or
+    // handler), so it's the right place to guarantee the header on those
+    // responses too, not just the success path.
+    response.setHeader('Cache-Control', 'private, no-store');
+
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       response.status(status).json(exception.getResponse());

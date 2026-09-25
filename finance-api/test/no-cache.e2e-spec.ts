@@ -7,6 +7,7 @@ import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 import { NoCacheInterceptor } from '../src/common/no-cache.interceptor.js';
+import { AllExceptionsFilter } from '../src/common/all-exceptions.filter.js';
 
 async function signInternalToken(userId: string): Promise<string> {
   const secret = new TextEncoder().encode(process.env.INTERNAL_API_SECRET);
@@ -30,6 +31,11 @@ describe('no cross-user response caching (S04.16)', () => {
     }).compile();
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ZodValidationPipe());
+    // Registered here to match main.ts's real bootstrap order (filter,
+    // then interceptor) — needed so the guard-rejection test below
+    // exercises the actual production pipeline, not just the success
+    // path NoCacheInterceptor alone covers.
+    app.useGlobalFilters(new AllExceptionsFilter());
     app.useGlobalInterceptors(new NoCacheInterceptor());
     await app.init();
     prisma = moduleFixture.get(PrismaService);
@@ -52,6 +58,18 @@ describe('no cross-user response caching (S04.16)', () => {
 
     await prisma.user.delete({ where: { id: user.id } });
 
+    expect(res.headers['cache-control']).toBe('private, no-store');
+  });
+
+  // Guards run before Interceptors in Nest's pipeline (confirmed via
+  // review: NoCacheInterceptor never executes on a guard-rejected
+  // request), so a 401 from InternalAuthGuard is the one response shape
+  // NoCacheInterceptor structurally cannot cover — AllExceptionsFilter is
+  // what has to carry the header here instead.
+  it('GET /accounts/me with no auth header responds 401 with Cache-Control: private, no-store', async () => {
+    const res = await request(app.getHttpServer()).get('/accounts/me');
+
+    expect(res.status).toBe(401);
     expect(res.headers['cache-control']).toBe('private, no-store');
   });
 });
