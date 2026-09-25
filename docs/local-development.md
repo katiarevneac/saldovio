@@ -62,3 +62,20 @@ yet. These are the "is the process even up" floor.
 After `npm run db:seed:demo`: `demo@saldovio.test` / `DemoPassword123!`.
 Obviously-synthetic credentials, not meant to be secret — the demo database
 holds no real financial data.
+
+## Database credential separation (S04.10)
+
+Three separate databases already exist locally, each with its own
+`DATABASE_URL` in a separate env file — no implicit fallback between
+them:
+
+- `saldovio_dev` — `finance-api/.env` (gitignored)
+- `saldovio_test` — `finance-api/.env.test` (gitignored; `.env.test.example`
+  is the committed template)
+- `saldovio_demo` — `finance-api/.env.demo` (gitignored; `.env.demo.example`
+  is the committed template)
+
+`finance-api/scripts/db-guard.ts` (added under Epic 13's S00 cleanup work)
+already refuses to run test fixtures against a database that isn't
+explicitly named as the test target — this is that guard's documented
+rationale, not new behavior.
