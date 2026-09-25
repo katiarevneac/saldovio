@@ -18,6 +18,8 @@ async function signInternalToken(userId: string): Promise<string> {
   return new SignJWT({})
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(userId)
+    .setIssuer('saldovio-web')
+    .setAudience('saldovio-finance-api')
     .setIssuedAt()
     .setExpirationTime('30s')
     .sign(secret);
