@@ -20,8 +20,25 @@ createdb saldovio_demo
 ```
 
 Copy each `.env.*.example` to its real filename and fill in
-`INTERNAL_API_SECRET` (any random string per environment — they do not need
-to match each other).
+`INTERNAL_API_SECRET` (any random string per environment — the dev, test,
+and demo environments' secrets do not need to match each other).
+
+**Two secrets are shared across services and must match, or every
+protected route returns 401** (corrected 2026-09-25 — an earlier version
+of this note incorrectly said no secret needs to match anything):
+
+- `INTERNAL_API_SECRET` — must be the **same value** in `web/.env.local`
+  and whichever `finance-api/.env*` you're running against. `web/` signs
+  a short-lived internal JWT with this secret; `finance-api`'s
+  `InternalAuthGuard` verifies it with the same secret.
+- `ANALYTICS_API_SECRET` — must be the **same value** in `web/.env.local`
+  and `analytics-service/.env`. `web/` sends this as a header;
+  `analytics-service/auth.py`'s `verify_shared_secret` checks it against
+  its own copy.
+
+Only `AUTH_SECRET` (Auth.js's own session-cookie signing key) is
+genuinely independent — it never leaves `web/`, so nothing else needs to
+know it.
 
 ## Start sequence
 
@@ -44,6 +61,12 @@ to match each other).
    cd analytics-service && source venv/bin/activate && uvicorn main:app --reload   # :8000
    cd web && npm run dev                 # :3001
    ```
+   `analytics-service` needs `analytics-service/.env` present (copy from
+   `.env.example`) before this will work — `main.py` loads it via
+   `python-dotenv` on startup (Epic 15 Story 1). Without it, or with
+   `ANALYTICS_API_SECRET` unset in it, the process now fails fast with a
+   `KeyError` on import rather than starting and failing every request —
+   see the shared-secrets note above for what value it needs.
 
 ## Health checks
 
@@ -79,3 +102,18 @@ them:
 already refuses to run test fixtures against a database that isn't
 explicitly named as the test target — this is that guard's documented
 rationale, not new behavior.
+
+## Rate limiting is effectively global, not per-user (S04.4 caveat)
+
+`finance-api`'s `ThrottlerGuard` (`src/app.module.ts`) tracks requests by
+`req.ip` by default. Under this app's BFF architecture, the browser never
+calls `finance-api` directly — only `web/` does, server-to-server — so
+`req.ip` is always `web/`'s own server IP, for every request from every
+user. In practice this means login, signup, transaction-create, and
+import-route rate limits are one shared global bucket across all users,
+not a per-user or per-caller limit. This is a known, accepted tradeoff
+for this app's current scale (single `web/` instance, no reverse proxy
+in front yet), not a gap that's been silently ignored — a real fix would
+need a per-caller tracking key (e.g. derived from the internal-auth
+JWT's subject) threaded through a custom `ThrottlerGuard`, deferred as
+out of scope for Epic 15 Story 1.

@@ -19,7 +19,7 @@ owning epic implements it.
 | Locale | Planned, low priority — Epic 22 (i18n) is the first story that needs it as a real field rather than the hardcoded `ro-RO` calls already scattered through `web/lib/money.ts` |
 | Forecast preference | Planned — no concrete shape yet; deferred until a story actually needs a second forecast mode |
 | Onboarding state | Planned — Epic 22 Story 1 (resumable onboarding) |
-| Session version | Planned — Epic 15 Story 3 (session revocation on password change/delete/logout-all) |
+| Session version | Planned — Epic 15 Story 2 (session revocation on password change/delete/logout-all) |
 
 ### Account
 | Field | Status |

@@ -176,11 +176,11 @@ Implement the controls below, then extend the negative tests whenever a new reso
 
 ### Identity and sessions
 
-- [ ] S04.1 Add startup validation for required secrets, URLs, environment, and production cookie settings. Missing or empty secrets must prevent startup; do not log their values.
-- [ ] S04.2 Verify internal JWTs against an explicit algorithm, issuer, audience, expiry, and valid positive user identifier. Require essential claims; reject malformed subjects and inactive/deleted users. Keep keys server-only and document rotation.
+- [x] S04.1 Add startup validation for required secrets, URLs, environment, and production cookie settings. Missing or empty secrets must prevent startup; do not log their values.
+- [x] S04.2 Verify internal JWTs against an explicit algorithm, issuer, audience, expiry, and valid positive user identifier. Require essential claims; reject malformed subjects and inactive/deleted users. Keep keys server-only and document rotation.
 - [ ] S04.3 Define revocation for Auth.js JWT sessions using a checked session version or equivalent server-side state. Password reset, account deletion, and “sign out all devices” must invalidate prior sessions. Account for the remaining lifetime of any issued internal token.
-- [ ] S04.4 Rate-limit login, signup, recovery, import, and expensive calculation routes. Use durable/shared limits for multiple instances and validate trusted proxy handling so forged forwarded IPs cannot bypass limits.
-- [ ] S04.5 Keep external authentication/recovery responses generic and inspect timing differences. Review password length handling, including bcrypt byte limits; never silently truncate passwords. Verify framework recommendations before changing hashing configuration.
+- [x] S04.4 Rate-limit login, signup, recovery, import, and expensive calculation routes. Use durable/shared limits for multiple instances and validate trusted proxy handling so forged forwarded IPs cannot bypass limits.
+- [x] S04.5 Keep external authentication/recovery responses generic and inspect timing differences. Review password length handling, including bcrypt byte limits; never silently truncate passwords. Verify framework recommendations before changing hashing configuration.
 - [ ] S04.6 Implement password change and account recovery. Use random, hashed-at-rest, short-lived, single-use tokens; enforce expiry, rate limits, atomic consumption, trusted reset URLs, and session revocation.
 - [ ] S04.7 Add email verification before real-data beta and define behavior for unverified accounts. Use a local mail sink for tests; select/configure a real delivery service at the release stage.
 
@@ -188,15 +188,15 @@ Authentication abuse controls are informed by [OWASP Authentication](https://che
 
 ### Resource and network boundaries
 
-- [ ] S04.8 Authorize every read/write by the authenticated owner, including nested objects, previews, transfers, matches, scenarios, budgets, exports, and recovery-related actions. Never accept a browser user ID as authority.
-- [ ] S04.9 Use owner-scoped queries and transaction-level checks. For transfers and matches, verify all referenced objects belong to the same user and have compatible account/currency semantics.
-- [ ] S04.10 Keep database/API credentials separate by environment. Restrict the runtime database role; use a separate migration role where supported.
-- [ ] S04.11 Make Analytics private or require service authentication, with bounded request sizes, rule/event counts, numeric ranges, and computation horizons. Stateless computation still needs abuse protection when exposed.
-- [ ] S04.12 Disable unnecessary Finance API CORS or narrowly configure actual browser consumers. Document that CORS is not authorization and server-to-server requests are not protected by browser-origin rules.
-- [ ] S04.13 Validate CSRF/origin behavior for Server Actions and session-authenticated state changes, HTTPS, secure/HttpOnly/SameSite cookies, trusted hosts, and safe redirects using the installed framework version.
-- [ ] S04.14 Add tested security headers and a CSP compatible with Next.js/chart rendering. Roll out CSP in report-only mode first; remove accidental sensitive data from reports.
-- [ ] S04.15 Bound text lengths, arrays, file sizes, pagination sizes, and numeric inputs. Convert expected validation/database errors into controlled responses without stack traces, SQL, tokens, or personal records.
-- [ ] S04.16 Verify financial HTML/API/export responses cannot be cached across users. Apply appropriate private/no-store behavior and test shared-device logout/back navigation.
+- [x] S04.8 Authorize every read/write by the authenticated owner, including nested objects, previews, transfers, matches, scenarios, budgets, exports, and recovery-related actions. Never accept a browser user ID as authority.
+- [x] S04.9 Use owner-scoped queries and transaction-level checks. For transfers and matches, verify all referenced objects belong to the same user and have compatible account/currency semantics.
+- [x] S04.10 Keep database/API credentials separate by environment. Restrict the runtime database role; use a separate migration role where supported.
+- [x] S04.11 Make Analytics private or require service authentication, with bounded request sizes, rule/event counts, numeric ranges, and computation horizons. Stateless computation still needs abuse protection when exposed.
+- [x] S04.12 Disable unnecessary Finance API CORS or narrowly configure actual browser consumers. Document that CORS is not authorization and server-to-server requests are not protected by browser-origin rules.
+- [x] S04.13 Validate CSRF/origin behavior for Server Actions and session-authenticated state changes, HTTPS, secure/HttpOnly/SameSite cookies, trusted hosts, and safe redirects using the installed framework version.
+- [x] S04.14 Add tested security headers and a CSP compatible with Next.js/chart rendering. Roll out CSP in report-only mode first; remove accidental sensitive data from reports.
+- [x] S04.15 Bound text lengths, arrays, file sizes, pagination sizes, and numeric inputs. Convert expected validation/database errors into controlled responses without stack traces, SQL, tokens, or personal records.
+- [x] S04.16 Verify financial HTML/API/export responses cannot be cached across users. Apply appropriate private/no-store behavior and test shared-device logout/back navigation.
 
 Acceptance: user B cannot access or modify any of user A's resource types by changing identifiers. Invalid/expired/wrong-audience tokens fail. Reset tokens cannot be reused. Revoked sessions cannot perform new writes. No secret appears in browser bundles, logs, errors, or CI artifacts. Add a dated threat model listing remaining limitations; do not label the product “secure” based only on passing unit tests.
 

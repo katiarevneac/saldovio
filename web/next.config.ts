@@ -51,8 +51,18 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "DENY" },
-          { key: "Cache-Control", value: "private, no-store" },
         ],
+      },
+      {
+        // Separate rule so Cache-Control: private, no-store never matches
+        // /_next/static/* — a blanket "/:path*" rule (S04.16) pre-empted
+        // Next.js's own immutable-asset caching, forcing every JS/CSS/font
+        // chunk to re-download on every navigation (final review finding,
+        // Epic 15 Story 1). The negative-lookahead source excludes only
+        // the static-asset prefix; every app route, including API-backed
+        // financial data, keeps the no-store guarantee S04.16 exists for.
+        source: "/((?!_next/static).*)",
+        headers: [{ key: "Cache-Control", value: "private, no-store" }],
       },
     ];
   },
