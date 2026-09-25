@@ -3,8 +3,11 @@ import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { AppModule } from './app.module.js';
+import { validateEnv } from './common/validate-env.js';
 
 async function bootstrap() {
+  validateEnv(process.env, ['DATABASE_URL', 'INTERNAL_API_SECRET']);
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.useBodyParser('json', { limit: '5mb' });
   app.enableCors();
