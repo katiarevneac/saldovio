@@ -6,13 +6,18 @@ import { auth } from "@/auth";
 // request to Finance API really comes from web/'s server, acting on
 // behalf of the currently logged-in user. `import "server-only"` makes
 // the build fail if this ever gets imported into a Client Component —
-// INTERNAL_API_SECRET must never reach the browser bundle.
+// INTERNAL_API_SECRET must never reach the browser bundle. iss/aud are
+// bound to finance-api's InternalAuthGuard (improvements.md F11a).
 const secret = new TextEncoder().encode(process.env.INTERNAL_API_SECRET);
+const ISSUER = "saldovio-web";
+const AUDIENCE = "saldovio-finance-api";
 
 async function signInternalToken(userId: string): Promise<string> {
   return new SignJWT({})
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(userId)
+    .setIssuer(ISSUER)
+    .setAudience(AUDIENCE)
     .setIssuedAt()
     .setExpirationTime("30s")
     .sign(secret);

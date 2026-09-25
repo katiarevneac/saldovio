@@ -34,7 +34,12 @@ describe('InternalAuthGuard', () => {
   const guard = new InternalAuthGuard();
 
   it('accepts a correctly-shaped token (sanity check — everything below is a rejection case)', async () => {
-    const token = await signToken({ sub: '1' });
+    // improvements.md F11a: the hardened guard requires iss/aud to be
+    // present (jose's `issuer`/`audience` options reject a missing claim
+    // the same as a wrong one), matching what web/lib/internal-auth.ts's
+    // real signer now always sets. Without these, this fixture no longer
+    // represents a token the real signer could produce.
+    const token = await signToken({ sub: '1', issuer: 'saldovio-web', audience: 'saldovio-finance-api' });
     await expect(guard.canActivate(contextWithBearerToken(token))).resolves.toBe(true);
   });
 
@@ -66,6 +71,14 @@ describe('InternalAuthGuard', () => {
       issuer: 'not-saldovio-web',
       audience: 'not-saldovio-finance-api',
     });
+    await expect(guard.canActivate(contextWithBearerToken(token))).rejects.toThrow();
+  });
+
+  // improvements.md F11a (P0): Number(payload.sub) on a non-numeric or
+  // non-positive subject (e.g. "-1", "abc", "0") should never resolve to
+  // a usable user id.
+  it('F11a: rejects a token whose subject is not a positive integer', async () => {
+    const token = await signToken({ sub: '-1', issuer: 'saldovio-web', audience: 'saldovio-finance-api' });
     await expect(guard.canActivate(contextWithBearerToken(token))).rejects.toThrow();
   });
 });
