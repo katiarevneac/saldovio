@@ -16,4 +16,10 @@ describe('LoginSchema', () => {
     const result = LoginSchema.safeParse({ email: 'a@b.com' });
     expect(result.success).toBe(false);
   });
+
+  it('rejects a password bcrypt would truncate (>72 UTF-8 bytes)', () => {
+    const tooLong = 'a'.repeat(73);
+    const result = LoginSchema.safeParse({ email: 'a@b.com', password: tooLong });
+    expect(result.success).toBe(false);
+  });
 });

@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { describe, expect, it, beforeAll, afterAll } from 'vitest';
+import { describe, expect, it, beforeAll, afterAll, vi } from 'vitest';
 import bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuthService } from './auth.service.js';
@@ -40,5 +40,18 @@ describe('AuthService', () => {
     await expect(
       service.login({ email: 'nobody-here@example.com', password: 'anything' }),
     ).rejects.toThrow('Invalid credentials');
+  });
+
+  it('compares against a real bcrypt hash even when the email does not exist, so response time does not leak which emails are registered', async () => {
+    // AuthService.login must call bcrypt.compare (or an equivalent-cost
+    // operation) on the unknown-email path too, not short-circuit
+    // straight to the UnauthorizedException — otherwise a missing user
+    // returns near-instantly while a wrong password takes a real bcrypt
+    // round, and the difference is measurable.
+    const compareSpy = vi.spyOn(bcrypt, 'compare');
+    await expect(
+      service.login({ email: 'definitely-not-registered@example.com', password: 'anything' }),
+    ).rejects.toThrow('Invalid credentials');
+    expect(compareSpy).toHaveBeenCalled();
   });
 });

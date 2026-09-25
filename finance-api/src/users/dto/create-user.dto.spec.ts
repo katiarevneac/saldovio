@@ -16,4 +16,13 @@ describe('CreateUserSchema', () => {
     const result = CreateUserSchema.safeParse({ email: 'a@b.com', password: 'short' });
     expect(result.success).toBe(false);
   });
+
+  it('rejects a password bcrypt would truncate (>72 UTF-8 bytes)', () => {
+    const tooLong = 'a'.repeat(73);
+    const result = CreateUserSchema.safeParse({
+      email: 'test@example.com',
+      password: tooLong,
+    });
+    expect(result.success).toBe(false);
+  });
 });
