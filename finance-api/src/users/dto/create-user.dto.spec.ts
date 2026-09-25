@@ -25,4 +25,14 @@ describe('CreateUserSchema', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  // improvements.md S04.15 — .email() has no built-in length cap (zod
+  // accepts a 500,000-character string as a "valid" email, confirmed
+  // directly), so an attacker could send a multi-megabyte email string.
+  // 254 is RFC 5321's max total email length.
+  it('rejects an email longer than 254 characters', () => {
+    const tooLong = `${'a'.repeat(250)}@b.com`;
+    const result = CreateUserSchema.safeParse({ email: tooLong, password: 'password123' });
+    expect(result.success).toBe(false);
+  });
 });

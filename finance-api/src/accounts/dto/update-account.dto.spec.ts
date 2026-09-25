@@ -29,4 +29,13 @@ describe('UpdateAccountSchema', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  // improvements.md S04.15 — name had a .min(1) but no .max(), so an
+  // attacker could send a multi-megabyte name string.
+  it('rejects a name longer than 200 characters', () => {
+    const result = UpdateAccountSchema.safeParse({
+      name: 'x'.repeat(201), currentBalance: 100, referenceDate: '2026-09-20',
+    });
+    expect(result.success).toBe(false);
+  });
 });

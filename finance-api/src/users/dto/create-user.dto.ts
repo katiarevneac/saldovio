@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 
 export const CreateUserSchema = z.object({
-  email: z.string().email(),
+  email: z.string().email().max(254),
   password: z
     .string()
     .min(8)

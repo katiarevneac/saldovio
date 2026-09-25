@@ -4,6 +4,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { AppModule } from './app.module.js';
 import { validateEnv } from './common/validate-env.js';
+import { AllExceptionsFilter } from './common/all-exceptions.filter.js';
 
 async function bootstrap() {
   validateEnv(process.env, ['DATABASE_URL', 'INTERNAL_API_SECRET']);
@@ -21,6 +22,7 @@ async function bootstrap() {
   app.enableCors({ origin: [...allowedOrigins] });
 
   app.useGlobalPipes(new ZodValidationPipe());
+  app.useGlobalFilters(new AllExceptionsFilter());
   await app.listen(process.env.PORT ?? 3000);
 }
 await bootstrap();

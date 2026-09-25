@@ -2,7 +2,7 @@ import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
 export const CreateAccountSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().min(1).max(200),
   currentBalance: z.number(),
   // Date-only, not full ISO8601 — @IsDateString() also accepted
   // timestamps like "2026-01-01T12:00:00Z", which fromDateOnlyString()

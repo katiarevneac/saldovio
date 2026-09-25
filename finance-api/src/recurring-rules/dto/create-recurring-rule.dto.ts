@@ -8,7 +8,7 @@ export const CreateRecurringRuleSchema = z.object({
   // forecast formula applies the sign by type, not the stored value.
   amount: z.number().positive(),
   dayOfMonth: z.number().int().min(1).max(31),
-  category: z.string().optional(),
+  category: z.string().max(200).optional(),
 });
 
 export class CreateRecurringRuleDto extends createZodDto(CreateRecurringRuleSchema) {}

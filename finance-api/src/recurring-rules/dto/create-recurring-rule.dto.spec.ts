@@ -21,4 +21,12 @@ describe('CreateRecurringRuleSchema', () => {
   it('rejects a type outside income/expense (no "transfer" here, unlike transactions)', () => {
     expect(CreateRecurringRuleSchema.safeParse({ ...valid, type: 'transfer' }).success).toBe(false);
   });
+
+  // improvements.md S04.15 — category was optional() with no .max(), so
+  // an attacker could send a multi-megabyte category string.
+  it('rejects a category longer than 200 characters', () => {
+    expect(
+      CreateRecurringRuleSchema.safeParse({ ...valid, category: 'x'.repeat(201) }).success,
+    ).toBe(false);
+  });
 });

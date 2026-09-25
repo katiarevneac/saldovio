@@ -25,6 +25,19 @@ describe('CreateTransactionSchema', () => {
     expect(CreateTransactionSchema.safeParse({ ...valid, occurredOn: '2026-09-10T12:00:00Z' }).success).toBe(false);
   });
 
+  // improvements.md S04.15 — category was optional() with no .max(), so
+  // an attacker could send a multi-megabyte category string.
+  it('rejects a category longer than 200 characters', () => {
+    const result = CreateTransactionSchema.safeParse({
+      accountId: 1,
+      type: 'expense',
+      amount: -10,
+      occurredOn: '2026-01-15',
+      category: 'x'.repeat(201),
+    });
+    expect(result.success).toBe(false);
+  });
+
   // improvements.md F10 (P0): amount is a bare z.number() here, with no
   // .multipleOf(0.01) guard — unlike import-commit.dto.ts's ImportRowSchema,
   // which has one specifically because the destination column is
