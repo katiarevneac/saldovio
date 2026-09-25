@@ -5,6 +5,7 @@ import { ZodValidationPipe } from 'nestjs-zod';
 import { AppModule } from './app.module.js';
 import { validateEnv } from './common/validate-env.js';
 import { AllExceptionsFilter } from './common/all-exceptions.filter.js';
+import { NoCacheInterceptor } from './common/no-cache.interceptor.js';
 
 async function bootstrap() {
   validateEnv(process.env, ['DATABASE_URL', 'INTERNAL_API_SECRET']);
@@ -23,6 +24,7 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ZodValidationPipe());
   app.useGlobalFilters(new AllExceptionsFilter());
+  app.useGlobalInterceptors(new NoCacheInterceptor());
   await app.listen(process.env.PORT ?? 3000);
 }
 await bootstrap();
