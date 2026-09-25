@@ -43,13 +43,17 @@ export class InternalAuthGuard implements CanActivate {
 
       const userId = Number(payload.sub);
       if (!Number.isInteger(userId) || userId <= 0) {
-        throw new UnauthorizedException('Invalid internal auth token subject');
+        // Deliberately a plain Error, not UnauthorizedException: it must
+        // fall through to the generic rejection below, the same as a bad
+        // signature or expired token — a distinct message here would leak
+        // *why* the token was rejected (design spec S04.2: "no distinct
+        // error message that would leak why it failed").
+        throw new Error('Invalid internal auth token subject');
       }
 
       request.userId = userId;
       return true;
-    } catch (error) {
-      if (error instanceof UnauthorizedException) throw error;
+    } catch {
       throw new UnauthorizedException('Invalid or expired internal auth token');
     }
   }
