@@ -1,5 +1,23 @@
 import type { NextConfig } from "next";
 
+// CSP is report-only in this story (improvements.md S04.14) — no
+// directive here can break production rendering (Recharts,
+// foreignObject tick labels in ForecastChartLine) since nothing is
+// blocked yet, only reported. Enforcement mode is a future story once
+// report data confirms the allowlist is complete.
+const CSP_REPORT_ONLY = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join("; ");
+
 const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
@@ -23,6 +41,19 @@ const nextConfig: NextConfig = {
           ? [process.env.WEB_PUBLIC_ORIGIN]
           : undefined,
     },
+  },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "Content-Security-Policy-Report-Only", value: CSP_REPORT_ONLY },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-Frame-Options", value: "DENY" },
+        ],
+      },
+    ];
   },
 };
 
