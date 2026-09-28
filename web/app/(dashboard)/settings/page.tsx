@@ -3,7 +3,7 @@ import { auth } from "@/auth";
 import { getMySettings } from "@/lib/settings";
 import { getMyAccounts } from "@/lib/accounts";
 import { selectableAccounts } from "@/lib/account-filters";
-import { updateSettingsAction, deleteAccountAction } from "@/app/actions";
+import { updateSettingsAction, deleteAccountAction, signOutAllDevicesAction } from "@/app/actions";
 import ImportCsvModal from "@/components/ImportCsvModal";
 import styles from "./page.module.css";
 
@@ -24,6 +24,8 @@ export default async function SettingsPage(props: PageProps<"/settings">) {
   const saved = searchParams.saved === "1";
   const deleteErrorMessage =
     typeof searchParams.deleteError === "string" ? searchParams.deleteError : null;
+  const signOutErrorMessage =
+    typeof searchParams.signOutError === "string" ? searchParams.signOutError : null;
 
   return (
     <div className={styles.page}>
@@ -88,6 +90,22 @@ export default async function SettingsPage(props: PageProps<"/settings">) {
           </div>
 
           <button type="submit">Save settings</button>
+        </form>
+      </section>
+
+      <section className={styles.sectionCard}>
+        <h2 className={styles.cardTitle}>Sessions</h2>
+        <p className={styles.note}>
+          Sign out everywhere this account is currently logged in, including
+          this device. You&apos;ll need to log in again afterward.
+        </p>
+
+        {signOutErrorMessage && <p className={styles.error}>{signOutErrorMessage}</p>}
+
+        <form action={signOutAllDevicesAction}>
+          <button type="submit" className={styles.deleteButton}>
+            Sign out all devices
+          </button>
         </form>
       </section>
 

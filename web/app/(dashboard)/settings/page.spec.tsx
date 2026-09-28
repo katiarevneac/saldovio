@@ -30,6 +30,7 @@ vi.mock("@/components/ImportCsvModal", () => ({
 vi.mock("@/app/actions", () => ({
   updateSettingsAction: vi.fn(),
   deleteAccountAction: vi.fn(),
+  signOutAllDevicesAction: vi.fn(),
 }));
 
 import SettingsPage from "./page";
@@ -158,6 +159,29 @@ describe("SettingsPage", () => {
     render(ui);
 
     expect(screen.getByText("Invalid password")).toBeInTheDocument();
+  });
+
+  it("renders a Sign out all devices button in a Sessions section", async () => {
+    const ui = await SettingsPage({
+      params: Promise.resolve({}),
+      searchParams: Promise.resolve({}),
+    });
+    render(ui);
+
+    expect(screen.getByRole("heading", { name: "Sessions" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign out all devices" })).toBeInTheDocument();
+  });
+
+  it("shows the sign-out error message from searchParams.signOutError", async () => {
+    const ui = await SettingsPage({
+      params: Promise.resolve({}),
+      searchParams: Promise.resolve({ signOutError: "Could not sign out other devices" }),
+    });
+    render(ui);
+
+    expect(
+      screen.getByText("Could not sign out other devices")
+    ).toBeInTheDocument();
   });
 
   it("fetches accounts alongside settings", async () => {

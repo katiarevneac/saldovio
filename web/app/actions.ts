@@ -229,3 +229,19 @@ export async function deleteAccountAction(formData: FormData): Promise<void> {
 
   await signOut({ redirectTo: "/login" });
 }
+
+export async function signOutAllDevicesAction(): Promise<void> {
+  const headers = await getAuthorizedHeaders();
+
+  const response = await fetch(`${FINANCE_API_URL}/users/me/sign-out-all-devices`, {
+    method: "POST",
+    headers,
+  });
+
+  if (!response.ok) {
+    const message = await extractApiErrorMessage(response, "Could not sign out other devices");
+    redirect(`/settings?signOutError=${encodeURIComponent(message)}`);
+  }
+
+  await signOut({ redirectTo: "/login" });
+}
