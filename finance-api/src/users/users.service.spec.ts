@@ -223,4 +223,30 @@ describe('UsersService', () => {
     expect(await prisma.account.findUnique({ where: { id: account.id } })).not.toBeNull();
     expect(await prisma.user.findUnique({ where: { id: user.id } })).not.toBeNull();
   });
+
+  it('getSessionVersion returns 0 for a freshly created user', async () => {
+    const user = await service.create({ email: testEmail, password: 'password123' });
+
+    const result = await service.getSessionVersion(user.id);
+
+    expect(result).toEqual({ session_version: 0 });
+  });
+
+  it('getSessionVersion throws NotFoundException for a nonexistent user', async () => {
+    await expect(service.getSessionVersion(999999999)).rejects.toThrow('User not found');
+  });
+
+  it('bumpSessionVersion increments the stored version by exactly one', async () => {
+    const user = await service.create({ email: testEmail, password: 'password123' });
+
+    await service.bumpSessionVersion(user.id);
+    expect(await service.getSessionVersion(user.id)).toEqual({ session_version: 1 });
+
+    await service.bumpSessionVersion(user.id);
+    expect(await service.getSessionVersion(user.id)).toEqual({ session_version: 2 });
+  });
+
+  it('bumpSessionVersion throws NotFoundException for a nonexistent user', async () => {
+    await expect(service.bumpSessionVersion(999999999)).rejects.toThrow('User not found');
+  });
 });

@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -8,6 +8,7 @@ import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateSettingsDto } from './dto/update-settings.dto.js';
 
 const UNIQUE_CONSTRAINT_VIOLATION = 'P2002';
+const RECORD_NOT_FOUND = 'P2025';
 
 type SettingsRow = {
   essentialSpend: Prisma.Decimal | null;
@@ -91,6 +92,37 @@ export class UsersService {
       select: { essentialSpend: true, payday: true, horizonDays: true },
     });
     return this.serializeSettings(user);
+  }
+
+  async getSessionVersion(userId: number): Promise<{ session_version: number }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { sessionVersion: true },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return { session_version: user.sessionVersion };
+  }
+
+  // Reusable hook: Epic 24's password-change flow will call this too, on
+  // top of its own token-consumption logic (design spec, "Decisions" —
+  // "a hook point only, not the password-change feature itself").
+  async bumpSessionVersion(userId: number): Promise<void> {
+    try {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { sessionVersion: { increment: 1 } },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === RECORD_NOT_FOUND
+      ) {
+        throw new NotFoundException('User not found');
+      }
+      throw error;
+    }
   }
 
   async deleteAccount(userId: number, password: string): Promise<void> {
