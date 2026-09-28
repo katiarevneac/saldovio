@@ -32,6 +32,7 @@ describe('ownership boundaries (S04.8/9)', () => {
   let userB: { id: number };
   let accountA: { id: number };
   let tokenB: string;
+  let tokenA: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -59,6 +60,7 @@ describe('ownership boundaries (S04.8/9)', () => {
       },
     });
     tokenB = await signInternalToken(String(userB.id));
+    tokenA = await signInternalToken(String(userA.id));
   });
 
   afterAll(async () => {
@@ -141,5 +143,36 @@ describe('ownership boundaries (S04.8/9)', () => {
     // No accountId/userId is accepted from the client on this route at
     // all — the only assertion possible here is that it succeeds scoped
     // to B's own token, proving the route has no body/query override.
+  });
+
+  describe('session revocation (S04.3)', () => {
+    it('GET /users/me/session-version returns the caller\'s own version, not another user\'s', async () => {
+      const responseA = await request(app.getHttpServer())
+        .get('/users/me/session-version')
+        .set('Authorization', `Bearer ${tokenA}`);
+      expect(responseA.status).toBe(200);
+      expect(responseA.body).toEqual({ session_version: 0 });
+
+      await request(app.getHttpServer())
+        .post('/users/me/sign-out-all-devices')
+        .set('Authorization', `Bearer ${tokenB}`)
+        .expect(204);
+
+      // Bumping B's version must never affect A's.
+      const responseAAfter = await request(app.getHttpServer())
+        .get('/users/me/session-version')
+        .set('Authorization', `Bearer ${tokenA}`);
+      expect(responseAAfter.body).toEqual({ session_version: 0 });
+
+      const responseBAfter = await request(app.getHttpServer())
+        .get('/users/me/session-version')
+        .set('Authorization', `Bearer ${tokenB}`);
+      expect(responseBAfter.body).toEqual({ session_version: 1 });
+    });
+
+    it('rejects GET and POST session-version routes with no token', async () => {
+      await request(app.getHttpServer()).get('/users/me/session-version').expect(401);
+      await request(app.getHttpServer()).post('/users/me/sign-out-all-devices').expect(401);
+    });
   });
 });

@@ -30,6 +30,19 @@ export class UsersController {
   }
 
   @UseGuards(InternalAuthGuard)
+  @Get('me/session-version')
+  getSessionVersion(@CurrentUserId() userId: number) {
+    return this.usersService.getSessionVersion(userId);
+  }
+
+  @UseGuards(InternalAuthGuard)
+  @Post('me/sign-out-all-devices')
+  @HttpCode(204)
+  signOutAllDevices(@CurrentUserId() userId: number) {
+    return this.usersService.bumpSessionVersion(userId);
+  }
+
+  @UseGuards(InternalAuthGuard)
   @Delete('me')
   @HttpCode(204)
   deleteAccount(@Body() dto: DeleteAccountDto, @CurrentUserId() userId: number) {
