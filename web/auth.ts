@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { FINANCE_API_URL } from "@/lib/config";
 import { isPathAuthorized } from "@/lib/route-protection";
+import { handleJwtCallback } from "@/lib/session-jwt";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   session: { strategy: "jwt" },
@@ -42,11 +43,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         pathname: request.nextUrl.pathname,
       });
     },
-    jwt({ token, user }) {
+    async jwt({ token, user }) {
       // Finance API's user id is a Postgres integer; the JWT `sub`
       // claim (used later to sign the internal service-to-service
       // token) must be a string per the JWT spec, so normalize here.
-      if (user) token.id = String(user.id);
+      // handleJwtCallback (Epic 15 Story 2, S04.3) also re-checks the
+      // session's revocation version on every request beyond the initial
+      // sign-in — returning null tells Auth.js to drop the session.
+      const result = await handleJwtCallback(
+        token,
+        user ? { id: String(user.id), sessionVersion: user.sessionVersion } : undefined
+      );
+      if (result === null) return null;
+      token.id = result.id;
+      token.sessionVersion = result.sessionVersion;
       return token;
     },
     session({ session, token }) {
