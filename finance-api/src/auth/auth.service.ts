@@ -26,6 +26,6 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    return { id: user.id, email: user.email };
+    return { id: user.id, email: user.email, sessionVersion: user.sessionVersion };
   }
 }

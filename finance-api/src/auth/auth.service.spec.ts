@@ -33,6 +33,15 @@ describe('AuthService', () => {
     expect(result.email).toBe(testEmail);
   });
 
+  it('includes the current sessionVersion in a successful login response', async () => {
+    const result = await service.login({ email: testEmail, password });
+    expect(result.sessionVersion).toBe(0);
+
+    await prisma.user.update({ where: { email: testEmail }, data: { sessionVersion: 3 } });
+    const resultAfterBump = await service.login({ email: testEmail, password });
+    expect(resultAfterBump.sessionVersion).toBe(3);
+  });
+
   it('rejects a wrong password with the same message as an unknown email', async () => {
     await expect(service.login({ email: testEmail, password: 'wrong' })).rejects.toThrow(
       'Invalid credentials',
