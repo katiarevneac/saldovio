@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Patch, Post, UseGuards } from '@nestjs/common';
-import { Throttle, seconds } from '@nestjs/throttler';
+import { SkipThrottle, Throttle, seconds } from '@nestjs/throttler';
 import { UsersService } from './users.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateSettingsDto } from './dto/update-settings.dto.js';
@@ -30,6 +30,7 @@ export class UsersController {
   }
 
   @UseGuards(InternalAuthGuard)
+  @SkipThrottle()
   @Get('me/session-version')
   getSessionVersion(@CurrentUserId() userId: number) {
     return this.usersService.getSessionVersion(userId);
