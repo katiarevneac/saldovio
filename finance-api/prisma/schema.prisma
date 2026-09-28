@@ -15,6 +15,7 @@ model User {
   essentialSpend Decimal?  @map("essential_spend") @db.Decimal(14, 2)
   payday         Int?
   horizonDays    Int       @default(30) @map("horizon_days")
+  sessionVersion Int       @default(0) @map("session_version")
   accounts       Account[]
 
   @@map("users")
