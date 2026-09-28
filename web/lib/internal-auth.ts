@@ -12,7 +12,7 @@ const secret = new TextEncoder().encode(process.env.INTERNAL_API_SECRET);
 const ISSUER = "saldovio-web";
 const AUDIENCE = "saldovio-finance-api";
 
-async function signInternalToken(userId: string): Promise<string> {
+export async function signInternalToken(userId: string): Promise<string> {
   return new SignJWT({})
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(userId)
