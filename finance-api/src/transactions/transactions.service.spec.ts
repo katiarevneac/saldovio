@@ -444,4 +444,74 @@ describe('TransactionsService', () => {
     const csv = await service.exportCsv(userId);
     expect(csv.startsWith('﻿')).toBe(true);
   });
+
+  describe('Epic 16 Story 1 — schema additions', () => {
+    it('defaults version to 0 and description/transferId to null on a plain insert', async () => {
+      const transaction = await prisma.transaction.create({
+        data: { accountId, type: 'expense', amount: new Prisma.Decimal(-10), occurredOn: fromDateOnlyString('2026-10-01') },
+      });
+
+      expect(transaction.version).toBe(0);
+      expect(transaction.description).toBeNull();
+      expect(transaction.transferId).toBeNull();
+    });
+
+    it('accepts a well-formed UUID in transferId', async () => {
+      const transferId = '11111111-1111-1111-1111-111111111111';
+      const transaction = await prisma.transaction.create({
+        data: {
+          accountId,
+          type: 'transfer',
+          amount: new Prisma.Decimal(-500),
+          occurredOn: fromDateOnlyString('2026-10-01'),
+          transferId,
+        },
+      });
+
+      expect(transaction.transferId).toBe(transferId);
+    });
+
+    it('rejects a non-UUID string in transferId at the database type level', async () => {
+      await expect(
+        prisma.$executeRaw`INSERT INTO transactions (account_id, type, amount, occurred_on, transfer_id)
+          VALUES (${accountId}, 'transfer', -500, ${fromDateOnlyString('2026-10-01')}, 'not-a-uuid')`,
+      ).rejects.toThrow();
+    });
+
+    it('accepts lifecycle "voided" at the database CHECK constraint', async () => {
+      const transaction = await prisma.transaction.create({
+        data: { accountId, type: 'expense', amount: new Prisma.Decimal(-10), occurredOn: fromDateOnlyString('2026-10-01') },
+      });
+
+      const voided = await prisma.transaction.update({
+        where: { id: transaction.id },
+        data: { lifecycle: 'voided' },
+      });
+
+      expect(voided.lifecycle).toBe('voided');
+    });
+
+    it('still rejects a lifecycle value outside actual/planned/voided at the database CHECK constraint', async () => {
+      const transaction = await prisma.transaction.create({
+        data: { accountId, type: 'expense', amount: new Prisma.Decimal(-10), occurredOn: fromDateOnlyString('2026-10-01') },
+      });
+
+      await expect(
+        prisma.transaction.update({ where: { id: transaction.id }, data: { lifecycle: 'archived' } }),
+      ).rejects.toThrow();
+    });
+
+    it('can update version independently, for a future optimistic-concurrency check to compare against', async () => {
+      const transaction = await prisma.transaction.create({
+        data: { accountId, type: 'expense', amount: new Prisma.Decimal(-10), occurredOn: fromDateOnlyString('2026-10-01') },
+      });
+
+      const bumped = await prisma.transaction.update({
+        where: { id: transaction.id },
+        data: { version: { increment: 1 } },
+      });
+
+      expect(bumped.version).toBe(1);
+    });
+  });
 });

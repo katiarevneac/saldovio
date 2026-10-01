@@ -56,13 +56,37 @@ model Transaction {
   category   String?
   importHash String?  @map("import_hash")
   // financial-rules.md §4's full lifecycle enum is actual/planned/
-  // voided/adjustment, but only actual/planned have any write path yet
-  // (S03.5) — voided/adjustment land with Epic 16 Story 1's edit/void
-  // work, which widens this CHECK rather than reworking the column.
+  // voided/adjustment. Epic 16 Story 1 widens the CHECK to add
+  // 'voided' (Story 2 is what actually writes it, via a void
+  // endpoint) — adjustment still has no write path anywhere, so the
+  // CHECK deliberately does not yet include it.
   // DB default 'actual' is safe: every existing row genuinely is one.
   lifecycle  String   @default("actual")
+  // Epic 16 Story 1: free-text description, separate from `category`.
+  // Story 7 (import) populates this from the CSV's own Description
+  // column instead of discarding it (closes F18/F06's description
+  // loss); manual transaction creation can set it too, no restriction
+  // at the schema level.
+  description String?
+  // Epic 16 Story 1: optimistic-concurrency counter. Starts at 0 for
+  // every row (existing and new, via the column default — not
+  // application code, so it holds even for a direct SQL insert).
+  // Story 2's edit/void/restore endpoints require the caller's
+  // last-known value and bump this on every write; a mismatch is a
+  // stale read, not a data race silently overwritten.
+  version    Int      @default(0)
+  // Epic 16 Story 1: shared by exactly 2 rows that together form one
+  // transfer (financial-rules.md §2 — source leg negative, destination
+  // leg positive, different accountId). Null for every non-transfer
+  // row. No DB-level "exactly 2 rows summing to zero" constraint —
+  // Postgres can't express a cross-row aggregate CHECK; Story 3's
+  // create-transfer endpoint enforces this inside one
+  // prisma.$transaction instead, same as atomic signup already does
+  // for a different invariant.
+  transferId String?  @db.Uuid @map("transfer_id")
 
   @@unique([accountId, importHash])
+  @@index([transferId])
   @@map("transactions")
 }
 
