@@ -191,7 +191,7 @@ Each story gets its own unit/integration tests following this project's establis
 
 ## 11. Sequencing within the epic
 
-Stories build in the backlog's own order (1 → 2 → 3 → … → 10) because later stories depend on earlier schema: Story 3 needs Story 1's `transferId`; Story 5/6 need Story 1's `ImportBatch`/`ImportStagedRow`; Story 9's category migration can run independently of import (Stories 4-7) but Story 7's "keep freeform category" decision exists specifically so Sprint 2 doesn't have to wait on Sprint 3's category design. Story 10 needs Story 2's void endpoint and Story 6's `ImportBatch` to both exist.
+Stories build in the backlog's own order (1 → 2 → 3 → … → 10) because later stories depend on earlier schema: Story 3 needs Story 1's `transferId`; Story 5 needs Story 6's `ImportBatch`/`ImportStagedRow` (§3 assigns that table to Story 6, not Story 1 — this line previously said "Story 1's", a spec self-inconsistency caught and fixed during Story 1's final review); Story 9's category migration can run independently of import (Stories 4-7) but Story 7's "keep freeform category" decision exists specifically so Sprint 2 doesn't have to wait on Sprint 3's category design. Story 10 needs Story 2's void endpoint and Story 6's `ImportBatch` to both exist.
 
 ## 12. Out of scope (explicitly, not an oversight)
 
