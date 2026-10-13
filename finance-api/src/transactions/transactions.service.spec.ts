@@ -428,6 +428,16 @@ describe('TransactionsService', () => {
     expect(lines[2]).toBe('2026-09-11,Test,expense,-12.5,Coffee');
   });
 
+  it('exportCsv excludes voided transactions but keeps the rest', async () => {
+    const a = await service.create({ accountId, type: 'income', amount: 100, occurredOn: '2026-09-10', category: 'Keep' }, userId);
+    const b = await service.create({ accountId, type: 'expense', amount: -5, occurredOn: '2026-09-11', category: 'Gone' }, userId);
+    await service.void(b.id, { version: b.version }, userId);
+    const csv = await service.exportCsv(userId);
+    expect(csv).toContain('Keep');
+    expect(csv).not.toContain('Gone');
+    expect(a.id).toBeDefined();
+  });
+
   it('exportCsv only includes the caller\'s own transactions', async () => {
     await service.create({ accountId, type: 'income', amount: 50, occurredOn: '2026-09-10', category: 'Mine' }, userId);
     await prisma.transaction.create({
@@ -597,10 +607,20 @@ describe('TransactionsService', () => {
       expect(result.id).toBe(t.id);
     });
 
-    it('voids a planned transaction', async () => {
+    it('rejects voiding a planned transaction with 400 (void is actual -> voided only)', async () => {
       const t = await makeTx({ lifecycle: 'planned' });
-      const result = await service.void(t.id, { version: 0 }, userId);
-      expect(result.lifecycle).toBe('voided');
+      await expect(service.void(t.id, { version: 0 }, userId)).rejects.toThrow(BadRequestException);
+      const after = await prisma.transaction.findUniqueOrThrow({ where: { id: t.id } });
+      expect(after.lifecycle).toBe('planned');
+    });
+
+    it('rejects a stale version with 409 before any state validation (void/restore/edit)', async () => {
+      const t = await makeTx();
+      await service.void(t.id, { version: 0 }, userId); // now voided, version 1
+      // Stale caller still believes version 0: 409, not the 400 the state would give.
+      await expect(service.void(t.id, { version: 0 }, userId)).rejects.toThrow(ConflictException);
+      await expect(service.restore(t.id, { version: 0 }, userId)).rejects.toThrow(ConflictException);
+      await expect(service.update(t.id, { version: 0, category: 'X' }, userId)).rejects.toThrow(ConflictException);
     });
 
     it('rejects voiding an already voided transaction with 400', async () => {
@@ -790,6 +810,14 @@ describe('TransactionsService', () => {
       expect(legs.map((l) => l.version)).toEqual([1, 1]);
     });
 
+    it('rejects a zero amount (including -0) for expense and income with 400', async () => {
+      const exp = await makeTx();
+      const inc = await makeTx({ type: 'income', amount: new Prisma.Decimal(10) });
+      await expect(service.update(exp.id, { version: 0, amount: -0 }, userId)).rejects.toThrow(BadRequestException);
+      await expect(service.update(exp.id, { version: 0, amount: 0 }, userId)).rejects.toThrow(BadRequestException);
+      await expect(service.update(inc.id, { version: 0, amount: 0 }, userId)).rejects.toThrow(BadRequestException);
+    });
+
     it('rejects a non-positive transfer magnitude with 400', async () => {
       const { out } = await makePair();
       await expect(service.update(out.id, { version: 0, amount: -75 }, userId)).rejects.toThrow(BadRequestException);
@@ -946,6 +974,11 @@ describe('TransactionsService', () => {
       await expect(service.impactPreview(live.id, { action: 'edit', amount: -1.234 }, userId)).rejects.toThrow(BadRequestException);
       await expect(service.impactPreview(live.id, { action: 'edit' }, userId)).rejects.toThrow(BadRequestException);
       await expect(service.impactPreview(live.id, { action: 'edit', occurredOn: '2999-01-01' }, userId)).rejects.toThrow(BadRequestException);
+    });
+
+    it('preview of void on a planned row is 400 like the real endpoint', async () => {
+      const t = await mk({ lifecycle: 'planned' });
+      await expect(service.impactPreview(t.id, { action: 'void' }, userId)).rejects.toThrow(BadRequestException);
     });
 
     it('performs no writes', async () => {

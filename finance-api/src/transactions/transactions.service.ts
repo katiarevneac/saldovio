@@ -88,10 +88,13 @@ export class TransactionsService {
 
   async void(id: number, dto: UpdateVersionDto, userId: number) {
     const row = await this.findOwned(id, userId);
+    if (row.version !== dto.version) {
+      throw new ConflictException('Transaction was modified; re-fetch and retry');
+    }
     if (row.lifecycle === 'voided') {
       throw new BadRequestException('Transaction is already voided');
     }
-    if (row.lifecycle !== 'actual' && row.lifecycle !== 'planned') {
+    if (row.lifecycle !== 'actual') {
       throw new BadRequestException(`A ${row.lifecycle} transaction cannot be voided`);
     }
     return this.changeLifecycle(row, dto.version, 'voided', userId);
@@ -99,6 +102,9 @@ export class TransactionsService {
 
   async restore(id: number, dto: UpdateVersionDto, userId: number) {
     const row = await this.findOwned(id, userId);
+    if (row.version !== dto.version) {
+      throw new ConflictException('Transaction was modified; re-fetch and retry');
+    }
     if (row.lifecycle !== 'voided') {
       throw new BadRequestException('Only a voided transaction can be restored');
     }
@@ -169,6 +175,9 @@ export class TransactionsService {
 
   async update(id: number, dto: UpdateTransactionDto, userId: number) {
     const row = await this.findOwned(id, userId);
+    if (row.version !== dto.version) {
+      throw new ConflictException('Transaction was modified; re-fetch and retry');
+    }
     if (row.lifecycle === 'voided') {
       throw new BadRequestException('Transaction is voided; restore it first');
     }
@@ -233,6 +242,9 @@ export class TransactionsService {
         sibling: ownNegative ? amount : amount.negated(),
       };
     }
+    if (amount.isZero()) {
+      throw new BadRequestException('amount must not be zero');
+    }
     if (row.type === 'income' && !(amount.isPositive() && !amount.isZero())) {
       throw new BadRequestException('An income amount must be greater than zero');
     }
@@ -283,7 +295,7 @@ export class TransactionsService {
       if (row.lifecycle === 'voided') {
         throw new BadRequestException('Transaction is already voided');
       }
-      if (row.lifecycle !== 'actual' && row.lifecycle !== 'planned') {
+      if (row.lifecycle !== 'actual') {
         throw new BadRequestException(`A ${row.lifecycle} transaction cannot be voided`);
       }
       proposedOwn.lifecycle = 'voided';
@@ -510,7 +522,7 @@ export class TransactionsService {
 
   async exportCsv(userId: number) {
     const transactions = await this.prisma.transaction.findMany({
-      where: { account: { userId } },
+      where: { account: { userId }, lifecycle: { not: 'voided' } },
       include: { account: { select: { name: true } } },
       orderBy: [{ occurredOn: 'asc' }, { id: 'asc' }],
     });
