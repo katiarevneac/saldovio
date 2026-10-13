@@ -5,6 +5,7 @@ import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ClockService } from '../common/clock.service.js';
 import { fromDateOnlyString, toDateOnlyString } from '../common/serialization.js';
+import { AccountsService } from '../accounts/accounts.service.js';
 import { TransactionsService } from './transactions.service.js';
 
 describe('TransactionsService', () => {
@@ -18,7 +19,7 @@ describe('TransactionsService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [TransactionsService, PrismaService, ClockService],
+      providers: [TransactionsService, AccountsService, PrismaService, ClockService],
     }).compile();
 
     service = module.get(TransactionsService);
@@ -64,7 +65,7 @@ describe('TransactionsService', () => {
   // financial-correctness rule, not a soft UX warning.
   it('rejects a future-dated actual transaction', async () => {
     const fixedTodayModule: TestingModule = await Test.createTestingModule({
-      providers: [TransactionsService, PrismaService, ClockService],
+      providers: [TransactionsService, AccountsService, PrismaService, ClockService],
     })
       .overrideProvider(ClockService)
       .useValue({ now: () => new Date('2026-06-15T00:00:00.000Z'), today: () => new Date(Date.UTC(2026, 5, 15)) })
@@ -83,7 +84,7 @@ describe('TransactionsService', () => {
   // long as it's marked `planned`, not `actual`.
   it('accepts a future-dated planned transaction and returns lifecycle: planned', async () => {
     const fixedTodayModule: TestingModule = await Test.createTestingModule({
-      providers: [TransactionsService, PrismaService, ClockService],
+      providers: [TransactionsService, AccountsService, PrismaService, ClockService],
     })
       .overrideProvider(ClockService)
       .useValue({ now: () => new Date('2026-06-15T00:00:00.000Z'), today: () => new Date(Date.UTC(2026, 5, 15)) })
@@ -827,6 +828,142 @@ describe('TransactionsService', () => {
       expect(legs.map((l) => l.category)).toEqual([null, null]);
       expect(legs.map((l) => l.lifecycle)).toEqual(['actual', 'actual']);
       expect(legs.map((l) => l.version)).toEqual([0, 0]);
+    });
+  });
+
+  describe('Epic 16 Story 2 — impact-preview', () => {
+    let accounts: AccountsService;
+    let previewAccountId: number;
+    let secondAccountId: number;
+
+    beforeEach(async () => {
+      const m = await Test.createTestingModule({
+        providers: [AccountsService, PrismaService, ClockService],
+      }).compile();
+      accounts = m.get(AccountsService);
+      // Fixed reference date well in the past so "post-reference" and
+      // "pre-reference" rows are deterministic and never future-dated.
+      const a = await prisma.account.create({
+        data: { name: 'Preview', currentBalance: new Prisma.Decimal(100), referenceDate: fromDateOnlyString('2020-06-01'), openingBoundary: 'start_of_day', userId },
+      });
+      previewAccountId = a.id;
+      const b = await prisma.account.create({
+        data: { name: 'Preview2', currentBalance: new Prisma.Decimal(0), referenceDate: fromDateOnlyString('2020-06-01'), openingBoundary: 'start_of_day', userId },
+      });
+      secondAccountId = b.id;
+    });
+
+    const mk = (overrides: Partial<Prisma.TransactionUncheckedCreateInput> = {}) =>
+      prisma.transaction.create({
+        data: {
+          accountId: previewAccountId,
+          type: 'expense',
+          amount: new Prisma.Decimal(-10),
+          occurredOn: fromDateOnlyString('2020-07-01'),
+          ...overrides,
+        },
+      });
+
+    const balanceOf = async (id: number) =>
+      (await accounts.findMine(userId)).find((x) => x.id === id)!.balance;
+
+    it('edit amount on a post-reference row: delta equals the amount change', async () => {
+      const t = await mk();
+      const r = await service.impactPreview(t.id, { action: 'edit', amount: -25 }, userId);
+      expect(r.transaction_id).toBe(t.id);
+      expect(r.action).toBe('edit');
+      expect(r.accounts).toHaveLength(1);
+      expect(r.accounts[0]).toMatchObject({
+        account_id: previewAccountId,
+        balance_before: '90',
+        balance_after: '75',
+        delta: '-15',
+        within_opening_snapshot: false,
+      });
+    });
+
+    it('edit on a pre-reference row: delta 0, within_opening_snapshot true, explicit note', async () => {
+      const t = await mk({ occurredOn: fromDateOnlyString('2020-01-01') });
+      const r = await service.impactPreview(t.id, { action: 'edit', amount: -99 }, userId);
+      expect(r.accounts[0].delta).toBe('0');
+      expect(r.accounts[0].balance_before).toBe('100');
+      expect(r.accounts[0].balance_after).toBe('100');
+      expect(r.accounts[0].within_opening_snapshot).toBe(true);
+      expect(r.accounts[0].note).toContain('reference date');
+    });
+
+    it('edit that moves a row from post- to pre-reference removes its effect', async () => {
+      const t = await mk();
+      const r = await service.impactPreview(t.id, { action: 'edit', occurredOn: '2020-01-01' }, userId);
+      expect(r.accounts[0].delta).toBe('10');
+      expect(r.accounts[0].within_opening_snapshot).toBe(true);
+      expect(r.accounts[0].note).toBeDefined();
+    });
+
+    it('void: delta is minus the amount', async () => {
+      const t = await mk();
+      const r = await service.impactPreview(t.id, { action: 'void' }, userId);
+      expect(r.accounts[0].delta).toBe('10');
+      expect(r.accounts[0].balance_after).toBe('100');
+    });
+
+    it('restore of a voided row: delta is plus the amount', async () => {
+      const t = await mk({ lifecycle: 'voided' });
+      const r = await service.impactPreview(t.id, { action: 'restore' }, userId);
+      expect(r.accounts[0].balance_before).toBe('100');
+      expect(r.accounts[0].delta).toBe('-10');
+      expect(r.accounts[0].balance_after).toBe('90');
+    });
+
+    it('transfer pair returns two accounts whose deltas sum to zero', async () => {
+      const transferId = '33333333-3333-3333-3333-333333333333';
+      const out = await mk({ type: 'transfer', amount: new Prisma.Decimal(-50), transferId });
+      await mk({ accountId: secondAccountId, type: 'transfer', amount: new Prisma.Decimal(50), transferId });
+      const v = await service.impactPreview(out.id, { action: 'void' }, userId);
+      expect(v.accounts).toHaveLength(2);
+      expect(v.accounts.map((a) => a.delta).sort()).toEqual(['-50', '50']);
+      const e = await service.impactPreview(out.id, { action: 'edit', amount: 80 }, userId);
+      const byAcc = Object.fromEntries(e.accounts.map((a) => [a.account_id, a.delta]));
+      expect(byAcc[previewAccountId]).toBe('-30');
+      expect(byAcc[secondAccountId]).toBe('30');
+    });
+
+    it('other user gets 404, same for a missing id', async () => {
+      const foreign = await prisma.transaction.create({
+        data: { accountId: otherUserAccountId, type: 'expense', amount: new Prisma.Decimal(-1), occurredOn: fromDateOnlyString('2020-07-01') },
+      });
+      await expect(service.impactPreview(foreign.id, { action: 'void' }, userId)).rejects.toThrow(NotFoundException);
+      await expect(service.impactPreview(999999999, { action: 'void' }, userId)).rejects.toThrow(NotFoundException);
+    });
+
+    it('returns the same 400s as the real endpoints for invalid actions', async () => {
+      const voided = await mk({ lifecycle: 'voided' });
+      const live = await mk();
+      await expect(service.impactPreview(voided.id, { action: 'void' }, userId)).rejects.toThrow(BadRequestException);
+      await expect(service.impactPreview(voided.id, { action: 'edit', amount: -5 }, userId)).rejects.toThrow(BadRequestException);
+      await expect(service.impactPreview(live.id, { action: 'restore' }, userId)).rejects.toThrow(BadRequestException);
+      await expect(service.impactPreview(live.id, { action: 'edit', amount: 5 }, userId)).rejects.toThrow(BadRequestException); // sign mismatch
+      await expect(service.impactPreview(live.id, { action: 'edit', amount: -1.234 }, userId)).rejects.toThrow(BadRequestException);
+      await expect(service.impactPreview(live.id, { action: 'edit' }, userId)).rejects.toThrow(BadRequestException);
+      await expect(service.impactPreview(live.id, { action: 'edit', occurredOn: '2999-01-01' }, userId)).rejects.toThrow(BadRequestException);
+    });
+
+    it('performs no writes', async () => {
+      const t = await mk();
+      await service.impactPreview(t.id, { action: 'void' }, userId);
+      await service.impactPreview(t.id, { action: 'edit', amount: -99 }, userId);
+      const after = await prisma.transaction.findUniqueOrThrow({ where: { id: t.id } });
+      expect(after.lifecycle).toBe('actual');
+      expect(after.version).toBe(0);
+      expect(after.amount.toString()).toBe('-10');
+    });
+
+    it('cross-check: balance_after equals the real balance after actually voiding', async () => {
+      const t = await mk({ amount: new Prisma.Decimal(-37.5) });
+      const preview = await service.impactPreview(t.id, { action: 'void' }, userId);
+      expect(preview.accounts[0].balance_before).toBe(await balanceOf(previewAccountId));
+      await service.void(t.id, { version: 0 }, userId);
+      expect(await balanceOf(previewAccountId)).toBe(preview.accounts[0].balance_after);
     });
   });
 });
