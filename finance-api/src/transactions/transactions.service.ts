@@ -12,6 +12,7 @@ import { ClockService } from '../common/clock.service.js';
 import { isBackdated } from '../common/backdated.js';
 import { CreateTransactionDto } from './dto/create-transaction.dto.js';
 import { UpdateVersionDto } from './dto/update-version.dto.js';
+import { UpdateTransactionDto } from './dto/update-transaction.dto.js';
 import { parseRevolutCsv, type ParsedRow } from './csv/revolut-parser.js';
 import { csvEscape } from './csv/csv-escape.js';
 
@@ -121,32 +122,108 @@ export class TransactionsService {
     return row;
   }
 
-  // Version-checked lifecycle change. For a transfer, both legs move
-  // together inside one $transaction: the addressed leg is
-  // version-checked, the sibling follows by transferId.
-  private async changeLifecycle(
+  // Version-checked change. For a transfer, both legs move together
+  // inside one $transaction: the addressed leg is version-checked, the
+  // sibling follows by transferId (scoped to the caller's accounts) and
+  // MUST be found exactly once — a pair with a missing or foreign
+  // sibling fails and rolls back instead of silently updating one leg.
+  private async updateWithSibling(
     row: { id: number; transferId: string | null },
     version: number,
-    lifecycle: 'actual' | 'voided',
+    ownData: Prisma.TransactionUncheckedUpdateManyInput,
+    siblingData: Prisma.TransactionUncheckedUpdateManyInput,
     userId: number,
   ) {
     const updated = await this.prisma.$transaction(async (tx) => {
       const result = await tx.transaction.updateMany({
         where: { id: row.id, version },
-        data: { lifecycle, version: { increment: 1 } },
+        data: { ...ownData, version: { increment: 1 } },
       });
       if (result.count === 0) {
         throw new ConflictException('Transaction was modified; re-fetch and retry');
       }
       if (row.transferId) {
-        await tx.transaction.updateMany({
+        const sibling = await tx.transaction.updateMany({
           where: { transferId: row.transferId, id: { not: row.id }, account: { userId } },
-          data: { lifecycle, version: { increment: 1 } },
+          data: { ...siblingData, version: { increment: 1 } },
         });
+        if (sibling.count !== 1) {
+          throw new ConflictException('Transfer pair is incomplete; cannot update');
+        }
       }
       return tx.transaction.findUniqueOrThrow({ where: { id: row.id } });
     });
     return this.serialize(updated);
+  }
+
+  private changeLifecycle(
+    row: { id: number; transferId: string | null },
+    version: number,
+    lifecycle: 'actual' | 'voided',
+    userId: number,
+  ) {
+    return this.updateWithSibling(row, version, { lifecycle }, { lifecycle }, userId);
+  }
+
+  async update(id: number, dto: UpdateTransactionDto, userId: number) {
+    const row = await this.findOwned(id, userId);
+    if (row.lifecycle === 'voided') {
+      throw new BadRequestException('Transaction is voided; restore it first');
+    }
+    if (row.lifecycle !== 'actual' && row.lifecycle !== 'planned') {
+      throw new BadRequestException(`A ${row.lifecycle} transaction cannot be edited`);
+    }
+    if (
+      dto.amount === undefined &&
+      dto.occurredOn === undefined &&
+      dto.category === undefined &&
+      dto.description === undefined
+    ) {
+      throw new BadRequestException('At least one field to change is required');
+    }
+
+    const common: Prisma.TransactionUncheckedUpdateManyInput = {};
+    if (dto.occurredOn !== undefined) {
+      const occurredOn = fromDateOnlyString(dto.occurredOn);
+      if (row.lifecycle === 'actual' && occurredOn.getTime() > this.clock.today().getTime()) {
+        throw new BadRequestException(
+          "occurredOn is in the future — an 'actual' transaction can't be dated after today. Use lifecycle: 'planned' instead.",
+        );
+      }
+      common.occurredOn = occurredOn;
+    }
+    if (dto.category !== undefined) common.category = dto.category;
+    if (dto.description !== undefined) common.description = dto.description;
+
+    const ownData: Prisma.TransactionUncheckedUpdateManyInput = { ...common };
+    const siblingData: Prisma.TransactionUncheckedUpdateManyInput = { ...common };
+
+    if (dto.amount !== undefined) {
+      const amount = new Prisma.Decimal(dto.amount);
+      if (amount.decimalPlaces() > 2) {
+        throw new BadRequestException('amount must have at most 2 decimal places');
+      }
+      if (row.type === 'transfer') {
+        // Transfer legs: caller sends a positive magnitude; each leg
+        // keeps its own sign (negative = outgoing leg).
+        if (!amount.isPositive() || amount.isZero()) {
+          throw new BadRequestException('A transfer amount must be a positive magnitude');
+        }
+        const ownNegative = row.amount.isNegative();
+        ownData.amount = ownNegative ? amount.negated() : amount;
+        siblingData.amount = ownNegative ? amount : amount.negated();
+      } else {
+        if (row.type === 'income' && !(amount.isPositive() && !amount.isZero())) {
+          throw new BadRequestException('An income amount must be greater than zero');
+        }
+        if (row.type === 'expense' && !amount.isNegative()) {
+          throw new BadRequestException('An expense amount must be less than zero');
+        }
+        ownData.amount = amount;
+      }
+    }
+
+    return this.updateWithSibling(row, dto.version, ownData, siblingData, userId);
   }
 
   // Single response shape for every endpoint that returns a
