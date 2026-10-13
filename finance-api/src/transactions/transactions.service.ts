@@ -61,24 +61,36 @@ export class TransactionsService {
       },
     });
 
-    return {
-      id: transaction.id,
-      account_id: transaction.accountId,
-      type: transaction.type,
-      amount: toDecimalString(transaction.amount),
-      occurred_on: toDateOnlyString(transaction.occurredOn),
-      category: transaction.category,
-      lifecycle: transaction.lifecycle,
-    };
+    return this.serialize(transaction);
   }
 
-  async findAll(userId: number) {
+  async findAll(userId: number, includeVoided = false) {
     const transactions = await this.prisma.transaction.findMany({
-      where: { account: { userId } },
+      where: {
+        account: { userId },
+        ...(includeVoided ? {} : { lifecycle: { not: 'voided' } }),
+      },
       orderBy: [{ occurredOn: 'asc' }, { id: 'asc' }],
     });
 
-    return transactions.map((t) => ({
+    return transactions.map((t) => this.serialize(t));
+  }
+
+  // Single response shape for every endpoint that returns a
+  // transaction (create/list/void/restore/edit).
+  private serialize(t: {
+    id: number;
+    accountId: number;
+    type: string;
+    amount: Prisma.Decimal;
+    occurredOn: Date;
+    category: string | null;
+    lifecycle: string;
+    description: string | null;
+    version: number;
+    transferId: string | null;
+  }) {
+    return {
       id: t.id,
       account_id: t.accountId,
       type: t.type,
@@ -86,7 +98,10 @@ export class TransactionsService {
       occurred_on: toDateOnlyString(t.occurredOn),
       category: t.category,
       lifecycle: t.lifecycle,
-    }));
+      description: t.description,
+      version: t.version,
+      transfer_id: t.transferId,
+    };
   }
 
   async previewImport(accountId: number, file: Buffer, userId: number) {

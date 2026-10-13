@@ -125,6 +125,57 @@ describe('TransactionsService', () => {
     expect(transactions[0].account_id).toBe(accountId);
   });
 
+  describe('findAll voided handling and serialization', () => {
+    async function seedVoided(forAccountId: number) {
+      return prisma.transaction.create({
+        data: {
+          accountId: forAccountId,
+          type: 'expense',
+          amount: new Prisma.Decimal(-5),
+          occurredOn: fromDateOnlyString('2026-09-10'),
+          lifecycle: 'voided',
+        },
+      });
+    }
+
+    it('hides voided transactions by default', async () => {
+      await service.create({ accountId, type: 'income', amount: 100, occurredOn: '2026-09-10' }, userId);
+      const voided = await seedVoided(accountId);
+
+      const transactions = await service.findAll(userId);
+
+      expect(transactions).toHaveLength(1);
+      expect(transactions.map((t) => t.id)).not.toContain(voided.id);
+    });
+
+    it('includes voided transactions when includeVoided is true', async () => {
+      const voided = await seedVoided(accountId);
+
+      const transactions = await service.findAll(userId, true);
+
+      expect(transactions.map((t) => t.id)).toContain(voided.id);
+    });
+
+    it("never shows another user's voided transaction, even with includeVoided", async () => {
+      const otherVoided = await seedVoided(otherUserAccountId);
+
+      const transactions = await service.findAll(userId, true);
+
+      expect(transactions.map((t) => t.id)).not.toContain(otherVoided.id);
+    });
+
+    it('includes version, description and transfer_id in findAll and create responses', async () => {
+      const created = await service.create({ accountId, type: 'income', amount: 100, occurredOn: '2026-09-10' }, userId);
+      const [listed] = await service.findAll(userId);
+
+      for (const t of [created, listed]) {
+        expect(t.version).toBe(0);
+        expect(t.description).toBeNull();
+        expect(t.transfer_id).toBeNull();
+      }
+    });
+  });
+
   const REVOLUT_HEADER =
     'Type,Product,Started Date,Completed Date,Description,Amount,Fee,Currency,State,Balance';
 

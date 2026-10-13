@@ -5,6 +5,7 @@ import {
   Get,
   Header,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -13,6 +14,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle, seconds } from '@nestjs/throttler';
 import { TransactionsService } from './transactions.service.js';
 import { CreateTransactionDto } from './dto/create-transaction.dto.js';
+import { ListTransactionsQueryDto } from './dto/list-transactions-query.dto.js';
 import { ImportPreviewDto } from './dto/import-preview.dto.js';
 import { ImportCommitDto } from './dto/import-commit.dto.js';
 import { InternalAuthGuard } from '../auth/internal-auth.guard.js';
@@ -35,8 +37,8 @@ export class TransactionsController {
   }
 
   @Get()
-  findAll(@CurrentUserId() userId: number) {
-    return this.transactionsService.findAll(userId);
+  findAll(@CurrentUserId() userId: number, @Query() query: ListTransactionsQueryDto) {
+    return this.transactionsService.findAll(userId, query.includeVoided === 'true');
   }
 
   @Throttle({ default: { limit: 10, ttl: seconds(60) } })
