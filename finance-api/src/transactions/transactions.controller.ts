@@ -4,7 +4,11 @@ import {
   Controller,
   Get,
   Header,
+  Param,
+  Patch,
+  ParseIntPipe,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -13,6 +17,10 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle, seconds } from '@nestjs/throttler';
 import { TransactionsService } from './transactions.service.js';
 import { CreateTransactionDto } from './dto/create-transaction.dto.js';
+import { ListTransactionsQueryDto } from './dto/list-transactions-query.dto.js';
+import { UpdateTransactionDto } from './dto/update-transaction.dto.js';
+import { ImpactPreviewQueryDto } from './dto/impact-preview-query.dto.js';
+import { UpdateVersionDto } from './dto/update-version.dto.js';
 import { ImportPreviewDto } from './dto/import-preview.dto.js';
 import { ImportCommitDto } from './dto/import-commit.dto.js';
 import { InternalAuthGuard } from '../auth/internal-auth.guard.js';
@@ -35,8 +43,8 @@ export class TransactionsController {
   }
 
   @Get()
-  findAll(@CurrentUserId() userId: number) {
-    return this.transactionsService.findAll(userId);
+  findAll(@CurrentUserId() userId: number, @Query() query: ListTransactionsQueryDto) {
+    return this.transactionsService.findAll(userId, query.includeVoided === 'true');
   }
 
   @Throttle({ default: { limit: 10, ttl: seconds(60) } })
@@ -59,6 +67,45 @@ export class TransactionsController {
   @Post('import/commit')
   commitImport(@Body() dto: ImportCommitDto, @CurrentUserId() userId: number) {
     return this.transactionsService.commitImport(dto.accountId, dto.rows, userId);
+  }
+
+  @Get(':id/impact-preview')
+  impactPreview(
+    @Param('id', ParseIntPipe) id: number,
+    @Query() query: ImpactPreviewQueryDto,
+    @CurrentUserId() userId: number,
+  ) {
+    return this.transactionsService.impactPreview(id, query, userId);
+  }
+
+  @Throttle({ default: { limit: 30, ttl: seconds(60) } })
+  @Patch(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateTransactionDto,
+    @CurrentUserId() userId: number,
+  ) {
+    return this.transactionsService.update(id, dto, userId);
+  }
+
+  @Throttle({ default: { limit: 30, ttl: seconds(60) } })
+  @Post(':id/void')
+  voidTransaction(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateVersionDto,
+    @CurrentUserId() userId: number,
+  ) {
+    return this.transactionsService.void(id, dto, userId);
+  }
+
+  @Throttle({ default: { limit: 30, ttl: seconds(60) } })
+  @Post(':id/restore')
+  restoreTransaction(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateVersionDto,
+    @CurrentUserId() userId: number,
+  ) {
+    return this.transactionsService.restore(id, dto, userId);
   }
 
   @Get('export')
