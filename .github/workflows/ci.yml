@@ -52,6 +52,8 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/saldovio_test?schema=public
+      # Throwaway value for tests only; never used outside CI.
+      INTERNAL_API_SECRET: ci-only-internal-api-secret-not-used-anywhere-else
     steps:
       - uses: actions/checkout@v4
 
