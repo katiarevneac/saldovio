@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { describe, expect, it, beforeEach, afterEach, afterAll } from 'vitest';
 import { Prisma } from '../generated/prisma/client.js';
@@ -563,6 +563,131 @@ describe('TransactionsService', () => {
       });
 
       expect(bumped.version).toBe(1);
+    });
+  });
+
+  describe('Epic 16 Story 2 — void / restore', () => {
+    const makeTx = (overrides: Partial<Prisma.TransactionUncheckedCreateInput> = {}) =>
+      prisma.transaction.create({
+        data: {
+          accountId,
+          type: 'expense',
+          amount: new Prisma.Decimal(-10),
+          occurredOn: fromDateOnlyString('2020-01-01'),
+          ...overrides,
+        },
+      });
+
+    const makePair = async () => {
+      const second = await prisma.account.create({
+        data: { name: 'Second', currentBalance: new Prisma.Decimal(0), referenceDate: new Date(), openingBoundary: 'start_of_day', userId },
+      });
+      const transferId = '22222222-2222-2222-2222-222222222222';
+      const out = await makeTx({ type: 'transfer', amount: new Prisma.Decimal(-50), transferId });
+      const into = await makeTx({ accountId: second.id, type: 'transfer', amount: new Prisma.Decimal(50), transferId });
+      return { out, into };
+    };
+
+    it('voids an actual transaction and increments version', async () => {
+      const t = await makeTx();
+      const result = await service.void(t.id, { version: 0 }, userId);
+      expect(result.lifecycle).toBe('voided');
+      expect(result.version).toBe(1);
+      expect(result.id).toBe(t.id);
+    });
+
+    it('voids a planned transaction', async () => {
+      const t = await makeTx({ lifecycle: 'planned' });
+      const result = await service.void(t.id, { version: 0 }, userId);
+      expect(result.lifecycle).toBe('voided');
+    });
+
+    it('rejects voiding an already voided transaction with 400', async () => {
+      const t = await makeTx({ lifecycle: 'voided' });
+      await expect(service.void(t.id, { version: 0 }, userId)).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects a stale version with 409 and leaves the row unchanged', async () => {
+      const t = await makeTx();
+      await expect(service.void(t.id, { version: 5 }, userId)).rejects.toThrow(ConflictException);
+      const after = await prisma.transaction.findUniqueOrThrow({ where: { id: t.id } });
+      expect(after.lifecycle).toBe('actual');
+      expect(after.version).toBe(0);
+    });
+
+    it('returns 404 for another user\'s transaction and for a missing id, identically', async () => {
+      const foreign = await prisma.transaction.create({
+        data: { accountId: otherUserAccountId, type: 'expense', amount: new Prisma.Decimal(-1), occurredOn: fromDateOnlyString('2020-01-01') },
+      });
+      await expect(service.void(foreign.id, { version: 0 }, userId)).rejects.toThrow(NotFoundException);
+      await expect(service.void(foreign.id, { version: 0 }, userId)).rejects.toThrow('Transaction not found');
+      await expect(service.void(999999999, { version: 0 }, userId)).rejects.toThrow('Transaction not found');
+      await expect(service.restore(foreign.id, { version: 0 }, userId)).rejects.toThrow(NotFoundException);
+      const after = await prisma.transaction.findUniqueOrThrow({ where: { id: foreign.id } });
+      expect(after.lifecycle).toBe('actual');
+    });
+
+    it('restores a voided transaction to actual and increments version', async () => {
+      const t = await makeTx({ lifecycle: 'voided', version: 3 });
+      const result = await service.restore(t.id, { version: 3 }, userId);
+      expect(result.lifecycle).toBe('actual');
+      expect(result.version).toBe(4);
+    });
+
+    it('rejects restoring a planned (non-voided) transaction with 400', async () => {
+      const t = await makeTx({ lifecycle: 'planned' });
+      await expect(service.restore(t.id, { version: 0 }, userId)).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects restoring a voided transaction dated in the future with 400', async () => {
+      const t = await makeTx({ lifecycle: 'voided', occurredOn: fromDateOnlyString('2999-01-01') });
+      await expect(service.restore(t.id, { version: 0 }, userId)).rejects.toThrow(BadRequestException);
+      const after = await prisma.transaction.findUniqueOrThrow({ where: { id: t.id } });
+      expect(after.lifecycle).toBe('voided');
+    });
+
+    it('voids both legs of a transfer pair and bumps both versions', async () => {
+      const { out, into } = await makePair();
+      const result = await service.void(out.id, { version: 0 }, userId);
+      expect(result.id).toBe(out.id);
+      expect(result.transfer_id).toBe(out.transferId);
+      const legs = await prisma.transaction.findMany({ where: { id: { in: [out.id, into.id] } } });
+      expect(legs.map((l) => l.lifecycle)).toEqual(['voided', 'voided']);
+      expect(legs.map((l) => l.version)).toEqual([1, 1]);
+    });
+
+    it('restores both legs of a voided transfer pair', async () => {
+      const { out, into } = await makePair();
+      await service.void(into.id, { version: 0 }, userId);
+      const result = await service.restore(into.id, { version: 1 }, userId);
+      expect(result.id).toBe(into.id);
+      const legs = await prisma.transaction.findMany({ where: { id: { in: [out.id, into.id] } } });
+      expect(legs.map((l) => l.lifecycle)).toEqual(['actual', 'actual']);
+      expect(legs.map((l) => l.version)).toEqual([2, 2]);
+    });
+
+    it('rolls back the addressed leg when the sibling update fails mid-$transaction', async () => {
+      const { out, into } = await makePair();
+      // Genuine DB error on the sibling write: a trigger that raises
+      // for that one row. No mocks — Postgres itself rejects the UPDATE.
+      await prisma.$executeRawUnsafe(`
+        CREATE OR REPLACE FUNCTION fail_sibling_update() RETURNS trigger AS $$
+        BEGIN
+          IF NEW.id = ${into.id} THEN RAISE EXCEPTION 'forced sibling failure'; END IF;
+          RETURN NEW;
+        END; $$ LANGUAGE plpgsql`);
+      await prisma.$executeRawUnsafe(
+        `CREATE TRIGGER fail_sibling_update_trg BEFORE UPDATE ON transactions FOR EACH ROW EXECUTE FUNCTION fail_sibling_update()`,
+      );
+      try {
+        await expect(service.void(out.id, { version: 0 }, userId)).rejects.toThrow();
+      } finally {
+        await prisma.$executeRawUnsafe(`DROP TRIGGER IF EXISTS fail_sibling_update_trg ON transactions`);
+        await prisma.$executeRawUnsafe(`DROP FUNCTION IF EXISTS fail_sibling_update()`);
+      }
+      const legs = await prisma.transaction.findMany({ where: { id: { in: [out.id, into.id] } }, orderBy: { id: 'asc' } });
+      expect(legs.map((l) => l.lifecycle)).toEqual(['actual', 'actual']);
+      expect(legs.map((l) => l.version)).toEqual([0, 0]);
     });
   });
 });
