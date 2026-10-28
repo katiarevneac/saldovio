@@ -203,6 +203,15 @@ export class TransactionsService {
           "occurredOn is in the future — an 'actual' transaction can't be dated after today. Use lifecycle: 'planned' instead.",
         );
       }
+      if (row.transferId) {
+        const legAccounts = await this.prisma.account.findMany({
+          where: {
+            userId,
+            transactions: { some: { transferId: row.transferId } },
+          },
+        });
+        this.assertTransferDateOutsideSnapshots(legAccounts, dto.occurredOn);
+      }
       common.occurredOn = occurredOn;
     }
     if (dto.category !== undefined) common.category = dto.category;
@@ -233,6 +242,27 @@ export class TransactionsService {
   private assertPositiveTransferMagnitude(amount: Prisma.Decimal): void {
     if (!amount.isPositive() || amount.isZero()) {
       throw new BadRequestException('A transfer amount must be a positive magnitude');
+    }
+  }
+
+  // A transfer leg dated inside its account's opening snapshot would not
+  // move that account's balance while the other leg still moves its
+  // own — silently changing the consolidated total (financial rule 1).
+  // Shared by createTransfer, update() and impactPreview() so the three
+  // can never disagree.
+  private assertTransferDateOutsideSnapshots(
+    accounts: { name: string; referenceDate: Date; openingBoundary: string }[],
+    occurredOn: string,
+  ): void {
+    for (const account of accounts) {
+      const referenceDate = toDateOnlyString(account.referenceDate);
+      if (
+        isBackdated(occurredOn, referenceDate, account.openingBoundary as 'legacy_inclusive' | 'start_of_day')
+      ) {
+        throw new BadRequestException(
+          `A transfer cannot be dated on or before the opening balance of account "${account.name}" (reference date ${referenceDate}); it would not move that account's balance.`,
+        );
+      }
     }
   }
 
@@ -271,20 +301,7 @@ export class TransactionsService {
         "occurredOn is in the future — a transfer can't be dated after today.",
       );
     }
-    for (const account of accounts) {
-      const referenceDate = toDateOnlyString(account.referenceDate);
-      if (
-        isBackdated(
-          dto.occurredOn,
-          referenceDate,
-          account.openingBoundary as 'legacy_inclusive' | 'start_of_day',
-        )
-      ) {
-        throw new BadRequestException(
-          `A transfer cannot be dated on or before the opening balance of account "${account.name}" (reference date ${referenceDate}); it would not move that account's balance.`,
-        );
-      }
-    }
+    this.assertTransferDateOutsideSnapshots(accounts, dto.occurredOn);
 
     const transferId = randomUUID();
     const base = {
@@ -414,6 +431,12 @@ export class TransactionsService {
           throw new BadRequestException(
             "occurredOn is in the future — an 'actual' transaction can't be dated after today. Use lifecycle: 'planned' instead.",
           );
+        }
+        if (row.transferId) {
+          const legAccounts = await this.prisma.account.findMany({
+            where: { userId, transactions: { some: { transferId: row.transferId } } },
+          });
+          this.assertTransferDateOutsideSnapshots(legAccounts, query.occurredOn);
         }
         proposedOwn.occurredOn = query.occurredOn;
         if (proposedSibling) proposedSibling.occurredOn = query.occurredOn;

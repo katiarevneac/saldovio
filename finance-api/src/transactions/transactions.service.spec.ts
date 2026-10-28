@@ -591,7 +591,7 @@ describe('TransactionsService', () => {
 
     const makePair = async () => {
       const second = await prisma.account.create({
-        data: { name: 'Second', currentBalance: new Prisma.Decimal(0), referenceDate: new Date(), openingBoundary: 'start_of_day', userId },
+        data: { name: 'Second', currentBalance: new Prisma.Decimal(0), referenceDate: fromDateOnlyString('2020-01-01'), openingBoundary: 'start_of_day', userId },
       });
       const transferId = '22222222-2222-2222-2222-222222222222';
       const out = await makeTx({ type: 'transfer', amount: new Prisma.Decimal(-50), transferId });
@@ -730,7 +730,7 @@ describe('TransactionsService', () => {
       const second = siblingAccountId
         ? { id: siblingAccountId }
         : await prisma.account.create({
-            data: { name: 'Second', currentBalance: new Prisma.Decimal(0), referenceDate: new Date(), openingBoundary: 'start_of_day', userId },
+            data: { name: 'Second', currentBalance: new Prisma.Decimal(0), referenceDate: fromDateOnlyString('2020-01-01'), openingBoundary: 'start_of_day', userId },
           });
       const transferId = '33333333-3333-3333-3333-333333333333';
       const out = await makeTx({ type: 'transfer', amount: new Prisma.Decimal(-50), transferId });
@@ -801,6 +801,8 @@ describe('TransactionsService', () => {
 
     it('edits a transfer pair as a unit with opposite signs and bumps both versions', async () => {
       const { out, into } = await makePair();
+      // Both legs' accounts must be open before the new date (else the edit is rightly rejected).
+      await prisma.account.update({ where: { id: accountId }, data: { referenceDate: fromDateOnlyString('2020-01-01') } });
       const r = await service.update(into.id, { version: 0, amount: 75, category: 'Savings', occurredOn: '2020-03-03' }, userId);
       expect(r.id).toBe(into.id);
       const legs = await prisma.transaction.findMany({ where: { id: { in: [out.id, into.id] } }, orderBy: { id: 'asc' } });
@@ -1185,6 +1187,51 @@ describe('TransactionsService', () => {
       expect(edited.map((l) => l.amount.toString())).toEqual(['-80', '80']);
       const after = await balances();
       expect(total(after).toString()).toBe(total(before).toString());
+    });
+
+    describe('editing the date of a transfer pair', () => {
+      const makeDatedPair = async () => {
+        const dst2 = await mkAccount('Dst2', { referenceDate: fromDateOnlyString('2026-06-12') });
+        const res = await svc.createTransfer(
+          { sourceAccountId: srcId, destinationAccountId: dst2.id, amount: 50, occurredOn: '2026-06-14' },
+          userId,
+        );
+        return { res, dst2 };
+      };
+
+      it('rejects (400) a date inside one leg\'s opening snapshot, writes nothing, total unchanged', async () => {
+        const { res, dst2 } = await makeDatedPair();
+        const before = await balances();
+        const err = await svc.update(res.source.id, { version: 0, occurredOn: '2026-06-10' }, userId).catch((e) => e);
+        expect(err).toBeInstanceOf(BadRequestException);
+        expect(err.message).toContain('Dst2');
+        expect(err.message).toContain('2026-06-12');
+        const legs = await prisma.transaction.findMany({ where: { transferId: res.transfer_id } });
+        for (const leg of legs) {
+          expect(toDateOnlyString(leg.occurredOn)).toBe('2026-06-14');
+          expect(leg.version).toBe(0);
+        }
+        const after = await balances();
+        expect(total(after).toString()).toBe(total(before).toString());
+        expect(after.get(dst2.id)!.toString()).toBe(before.get(dst2.id)!.toString());
+      });
+
+      it('still edits the date of both legs when it stays outside both snapshots', async () => {
+        const { res } = await makeDatedPair();
+        await svc.update(res.destination.id, { version: 0, occurredOn: '2026-06-13' }, userId);
+        const legs = await prisma.transaction.findMany({ where: { transferId: res.transfer_id } });
+        expect(legs.map((l) => toDateOnlyString(l.occurredOn))).toEqual(['2026-06-13', '2026-06-13']);
+        expect(legs.map((l) => l.version)).toEqual([1, 1]);
+      });
+
+      it('impact-preview of the same edit returns the same 400', async () => {
+        const { res } = await makeDatedPair();
+        const err = await svc
+          .impactPreview(res.source.id, { action: 'edit', occurredOn: '2026-06-10' }, userId)
+          .catch((e) => e);
+        expect(err).toBeInstanceOf(BadRequestException);
+        expect(err.message).toContain('Dst2');
+      });
     });
   });
 });
