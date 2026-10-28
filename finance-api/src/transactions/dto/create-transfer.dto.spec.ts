@@ -27,4 +27,21 @@ describe('CreateTransferSchema', () => {
   it('rejects a category over 200 chars', () => {
     expect(CreateTransferSchema.safeParse({ ...valid, category: 'x'.repeat(201) }).success).toBe(false);
   });
+
+  it.each([1e20, 1e12, 1_000_000_000_000, 0, -5])('rejects out-of-range amount %s', (amount) => {
+    expect(CreateTransferSchema.safeParse({ ...valid, amount }).success).toBe(false);
+  });
+
+  it('accepts the maximum NUMERIC(14,2) amount', () => {
+    expect(CreateTransferSchema.safeParse({ ...valid, amount: 999_999_999_999.99 }).success).toBe(true);
+  });
+
+  it.each([2_147_483_648, 0, -1])('rejects out-of-range account id %s', (id) => {
+    expect(CreateTransferSchema.safeParse({ ...valid, sourceAccountId: id }).success).toBe(false);
+    expect(CreateTransferSchema.safeParse({ ...valid, destinationAccountId: id }).success).toBe(false);
+  });
+
+  it('accepts the maximum int32 account id', () => {
+    expect(CreateTransferSchema.safeParse({ ...valid, sourceAccountId: 2_147_483_647 }).success).toBe(true);
+  });
 });
