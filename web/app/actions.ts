@@ -8,6 +8,7 @@ import { extractApiErrorMessage } from "@/lib/api-errors";
 import { CreateAccountSchema, UpdateAccountSchema } from "@/lib/schemas/accounts";
 import { CreateRecurringRuleSchema } from "@/lib/schemas/recurring-rules";
 import { UpdateSettingsSchema, DeleteAccountSchema } from "@/lib/schemas/settings";
+import type { CreateTransferInput } from "@/lib/schemas/transactions";
 import type { ImportPreviewRow, ImportCommitRow } from "@/lib/import";
 
 export type CreateTransactionInput = {
@@ -24,6 +25,21 @@ export async function createTransactionAction(
   const headers = await getAuthorizedHeaders();
 
   const response = await fetch(`${FINANCE_API_URL}/transactions`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  if (!response.ok) {
+    const message = await extractApiErrorMessage(response, `Finance API returned ${response.status}`);
+    throw new Error(message);
+  }
+}
+
+export async function createTransferAction(input: CreateTransferInput): Promise<void> {
+  const headers = await getAuthorizedHeaders();
+
+  const response = await fetch(`${FINANCE_API_URL}/transactions/transfer`, {
     method: "POST",
     headers: { ...headers, "Content-Type": "application/json" },
     body: JSON.stringify(input),

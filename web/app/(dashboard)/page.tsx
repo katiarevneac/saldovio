@@ -5,6 +5,7 @@ import { selectableAccounts } from "@/lib/account-filters";
 import { getMyRecurringRules } from "@/lib/recurring-rules";
 import { getTransactions } from "@/lib/transactions";
 import { getForecast, type Forecast } from "@/lib/analytics";
+import { transactionLabel } from "@/lib/transaction-filters";
 import { toBani, baniToDecimalString, formatAmount } from "@/lib/money";
 import { computeMonthlyTotals, currentYearMonth } from "@/lib/overview-metrics";
 import { todayDateString } from "@/lib/simulator";
@@ -198,9 +199,17 @@ export default async function DashboardPage() {
             {recentTransactions.map((transaction) => (
               <li key={transaction.id} className={styles.condensedRow}>
                 <span>
-                  {transaction.occurred_on} — {transaction.category ?? transaction.type}
+                  {transaction.occurred_on} — {transactionLabel(transaction)}
                 </span>
-                <span className={styles.tabularNums}>{formatAmount(toBani(transaction.amount))}</span>
+                <span
+                  className={
+                    transaction.type === "transfer"
+                      ? `${styles.tabularNums} ${styles.transferAmount}`
+                      : styles.tabularNums
+                  }
+                >
+                  {formatAmount(toBani(transaction.amount))}
+                </span>
               </li>
             ))}
           </ul>

@@ -43,6 +43,23 @@ describe("TransactionsExplorer", () => {
     expect(screen.getByRole("heading", { name: "2026-09-01" })).toBeInTheDocument();
   });
 
+  it.each(["comfortable", "compact", "By day"])("renders a transfer row as 'Transfer' with a neutral amount style (%s)", (density) => {
+    const withTransfer: Transaction[] = [
+      ...transactions,
+      { id: 4, account_id: 1, type: "transfer", amount: "-50.00", occurred_on: "2026-09-14", category: null },
+    ];
+    render(<TransactionsExplorer transactions={withTransfer} accountNameById={accountNameById} />);
+    if (density !== "comfortable") {
+      fireEvent.click(screen.getByRole("button", { name: new RegExp(density, "i") }));
+    }
+    const rowRole = density === "By day" ? "listitem" : "row";
+    const row = screen.getAllByRole(rowRole).find((r) => within(r).queryByText("Transfer"))!;
+    expect(row).toBeTruthy();
+    const amountCell = within(row).getByText(/50/);
+    expect(amountCell.className).toMatch(/transfer/);
+    expect(amountCell.className).not.toMatch(/income|expense/);
+  });
+
   it("shows an empty state when no transaction matches the filters", () => {
     render(<TransactionsExplorer transactions={transactions} accountNameById={accountNameById} />);
     fireEvent.change(screen.getByRole("searchbox", { name: "Search transactions" }), {

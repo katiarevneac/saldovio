@@ -217,6 +217,20 @@ describe("DashboardPage", () => {
     ).toHaveAttribute("href", "/transactions");
   });
 
+  it("labels a transfer in the recent list as 'Transfer · X' with a neutral amount", async () => {
+    getMyAccountsMock.mockResolvedValue([]);
+    getTransactionsMock.mockResolvedValue([
+      { id: 1, account_id: 1, type: "transfer" as const, amount: "-50.00", occurred_on: "2026-09-01", category: "Savings" },
+    ]);
+
+    const ui = await DashboardPage();
+    render(ui);
+
+    const label = screen.getByText(/Transfer · Savings$/);
+    const amount = label.closest("li")!.querySelectorAll("span")[1];
+    expect(amount.className).toMatch(/transferAmount/);
+  });
+
   it("renders the simulator card with a default amount and verdict", async () => {
     getMyAccountsMock.mockResolvedValue([]);
     getTransactionsMock.mockResolvedValue([]);

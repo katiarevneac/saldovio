@@ -18,6 +18,7 @@ import { Throttle, seconds } from '@nestjs/throttler';
 import { TransactionsService } from './transactions.service.js';
 import { CreateTransactionDto } from './dto/create-transaction.dto.js';
 import { ListTransactionsQueryDto } from './dto/list-transactions-query.dto.js';
+import { CreateTransferDto } from './dto/create-transfer.dto.js';
 import { UpdateTransactionDto } from './dto/update-transaction.dto.js';
 import { ImpactPreviewQueryDto } from './dto/impact-preview-query.dto.js';
 import { UpdateVersionDto } from './dto/update-version.dto.js';
@@ -40,6 +41,12 @@ export class TransactionsController {
   @Post()
   create(@Body() dto: CreateTransactionDto, @CurrentUserId() userId: number) {
     return this.transactionsService.create(dto, userId);
+  }
+
+  @Throttle({ default: { limit: 30, ttl: seconds(60) } })
+  @Post('transfer')
+  createTransfer(@Body() dto: CreateTransferDto, @CurrentUserId() userId: number) {
+    return this.transactionsService.createTransfer(dto, userId);
   }
 
   @Get()

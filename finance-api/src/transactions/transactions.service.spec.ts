@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { describe, expect, it, beforeEach, afterEach, afterAll } from 'vitest';
 import { Prisma } from '../generated/prisma/client.js';
@@ -591,7 +591,7 @@ describe('TransactionsService', () => {
 
     const makePair = async () => {
       const second = await prisma.account.create({
-        data: { name: 'Second', currentBalance: new Prisma.Decimal(0), referenceDate: new Date(), openingBoundary: 'start_of_day', userId },
+        data: { name: 'Second', currentBalance: new Prisma.Decimal(0), referenceDate: fromDateOnlyString('2020-01-01'), openingBoundary: 'start_of_day', userId },
       });
       const transferId = '22222222-2222-2222-2222-222222222222';
       const out = await makeTx({ type: 'transfer', amount: new Prisma.Decimal(-50), transferId });
@@ -730,7 +730,7 @@ describe('TransactionsService', () => {
       const second = siblingAccountId
         ? { id: siblingAccountId }
         : await prisma.account.create({
-            data: { name: 'Second', currentBalance: new Prisma.Decimal(0), referenceDate: new Date(), openingBoundary: 'start_of_day', userId },
+            data: { name: 'Second', currentBalance: new Prisma.Decimal(0), referenceDate: fromDateOnlyString('2020-01-01'), openingBoundary: 'start_of_day', userId },
           });
       const transferId = '33333333-3333-3333-3333-333333333333';
       const out = await makeTx({ type: 'transfer', amount: new Prisma.Decimal(-50), transferId });
@@ -801,6 +801,8 @@ describe('TransactionsService', () => {
 
     it('edits a transfer pair as a unit with opposite signs and bumps both versions', async () => {
       const { out, into } = await makePair();
+      // Both legs' accounts must be open before the new date (else the edit is rightly rejected).
+      await prisma.account.update({ where: { id: accountId }, data: { referenceDate: fromDateOnlyString('2020-01-01') } });
       const r = await service.update(into.id, { version: 0, amount: 75, category: 'Savings', occurredOn: '2020-03-03' }, userId);
       expect(r.id).toBe(into.id);
       const legs = await prisma.transaction.findMany({ where: { id: { in: [out.id, into.id] } }, orderBy: { id: 'asc' } });
@@ -997,6 +999,239 @@ describe('TransactionsService', () => {
       expect(preview.accounts[0].balance_before).toBe(await balanceOf(previewAccountId));
       await service.void(t.id, { version: 0 }, userId);
       expect(await balanceOf(previewAccountId)).toBe(preview.accounts[0].balance_after);
+    });
+  });
+
+  describe('Epic 16 Story 3 — createTransfer', () => {
+    let accounts: AccountsService;
+    let srcId: number;
+    let dstId: number;
+    const TODAY = '2026-06-15';
+
+    let svc: TransactionsService;
+    let fixedModule: TestingModule;
+
+    const mkAccount = (name: string, extra: Partial<Prisma.AccountUncheckedCreateInput> = {}) =>
+      prisma.account.create({
+        data: {
+          name,
+          currentBalance: new Prisma.Decimal(1000),
+          referenceDate: fromDateOnlyString('2020-01-01'),
+          openingBoundary: 'start_of_day',
+          userId,
+          ...extra,
+        },
+      });
+
+    const balances = async () => {
+      const mine = await accounts.findMine(userId);
+      return new Map(mine.map((a) => [a.id, new Prisma.Decimal(a.balance)]));
+    };
+    const total = (m: Map<number, Prisma.Decimal>) =>
+      [...m.values()].reduce((a, b) => a.plus(b), new Prisma.Decimal(0));
+    const transferRowCount = () =>
+      prisma.transaction.count({ where: { account: { userId }, type: 'transfer' } });
+    const ok = (over: Partial<Parameters<TransactionsService['createTransfer']>[0]> = {}) => ({
+      sourceAccountId: srcId,
+      destinationAccountId: dstId,
+      amount: 50,
+      occurredOn: '2026-06-10',
+      ...over,
+    });
+
+    beforeEach(async () => {
+      // One module (one PrismaService) per test, closed in afterEach —
+      // extra unclosed modules exhaust Postgres connections.
+      fixedModule = await Test.createTestingModule({
+        providers: [TransactionsService, AccountsService, PrismaService, ClockService],
+      })
+        .overrideProvider(ClockService)
+        .useValue({ now: () => new Date('2026-06-15T00:00:00.000Z'), today: () => new Date(Date.UTC(2026, 5, 15)) })
+        .compile();
+      svc = fixedModule.get(TransactionsService);
+      accounts = fixedModule.get(AccountsService);
+      srcId = (await mkAccount('Src')).id;
+      dstId = (await mkAccount('Dst')).id;
+    });
+
+    afterEach(async () => {
+      await fixedModule.get(PrismaService).$disconnect();
+    });
+
+    it('writes two linked transfer legs with derived signs and returns both', async () => {
+      const res = await svc.createTransfer(ok({ category: 'Savings' }), userId);
+      expect(res.transfer_id).toMatch(/^[0-9a-f-]{36}$/);
+      expect(res.source.account_id).toBe(srcId);
+      expect(res.source.amount).toBe('-50');
+      expect(res.destination.account_id).toBe(dstId);
+      expect(res.destination.amount).toBe('50');
+      for (const leg of [res.source, res.destination]) {
+        expect(leg.type).toBe('transfer');
+        expect(leg.lifecycle).toBe('actual');
+        expect(leg.transfer_id).toBe(res.transfer_id);
+        expect(leg.occurred_on).toBe('2026-06-10');
+        expect(leg.category).toBe('Savings');
+        expect(leg.version).toBe(0);
+      }
+      expect(await transferRowCount()).toBe(2);
+    });
+
+    it('moves the balances (source down, destination up) and leaves the consolidated total unchanged', async () => {
+      const before = await balances();
+      await svc.createTransfer(ok({ amount: 123.45 }), userId);
+      const after = await balances();
+      expect(after.get(srcId)!.toString()).toBe(before.get(srcId)!.minus('123.45').toString());
+      expect(after.get(dstId)!.toString()).toBe(before.get(dstId)!.plus('123.45').toString());
+      expect(total(after).toString()).toBe(total(before).toString());
+    });
+
+    it('rejects the same account on both sides (400)', async () => {
+      await expect(svc.createTransfer(ok({ destinationAccountId: srcId }), userId)).rejects.toThrow(BadRequestException);
+      expect(await transferRowCount()).toBe(0);
+    });
+
+    it('rejects a foreign source account (403) and writes nothing', async () => {
+      await expect(svc.createTransfer(ok({ sourceAccountId: otherUserAccountId }), userId)).rejects.toThrow(
+        'Account does not belong to the current user',
+      );
+      expect(await prisma.transaction.count({ where: { type: 'transfer', accountId: { in: [otherUserAccountId, dstId] } } })).toBe(0);
+    });
+
+    it('rejects a foreign destination account (403) and writes nothing', async () => {
+      await expect(svc.createTransfer(ok({ destinationAccountId: otherUserAccountId }), userId)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(await prisma.transaction.count({ where: { type: 'transfer', accountId: { in: [otherUserAccountId, srcId] } } })).toBe(0);
+    });
+
+    it.each(['source', 'destination'] as const)('rejects an archived %s account (400) naming it', async (side) => {
+      const id = side === 'source' ? srcId : dstId;
+      await prisma.account.update({ where: { id }, data: { archived: true, name: `Archived-${side}` } });
+      await expect(svc.createTransfer(ok(), userId)).rejects.toThrow(new RegExp(`Archived-${side}`));
+      expect(await transferRowCount()).toBe(0);
+    });
+
+    it.each(['source', 'destination'] as const)(
+      'rejects a transfer backdated for the %s account, naming it and its reference date',
+      async (side) => {
+        const id = side === 'source' ? srcId : dstId;
+        await prisma.account.update({
+          where: { id },
+          data: { name: `Old-${side}`, referenceDate: fromDateOnlyString('2026-06-12') },
+        });
+        const err = await svc.createTransfer(ok({ occurredOn: '2026-06-10' }), userId).catch((e) => e);
+        expect(err).toBeInstanceOf(BadRequestException);
+        expect(err.message).toContain(`Old-${side}`);
+        expect(err.message).toContain('2026-06-12');
+        expect(await transferRowCount()).toBe(0);
+      },
+    );
+
+    it('rejects a future-dated transfer (400)', async () => {
+      await expect(svc.createTransfer(ok({ occurredOn: '2026-06-16' }), userId)).rejects.toThrow(/future/);
+      expect(await transferRowCount()).toBe(0);
+    });
+
+    it('accepts a transfer dated exactly today', async () => {
+      const res = await svc.createTransfer(ok({ occurredOn: TODAY }), userId);
+      expect(res.source.occurred_on).toBe(TODAY);
+    });
+
+    it.each([0, -5, 10.123])('rejects amount %s (400)', async (amount) => {
+      await expect(svc.createTransfer(ok({ amount }), userId)).rejects.toThrow(BadRequestException);
+      expect(await transferRowCount()).toBe(0);
+    });
+
+    it('is atomic: a forced failure on the second leg insert leaves zero rows and unchanged balances', async () => {
+      const before = await balances();
+      await prisma.$executeRawUnsafe(`DROP TRIGGER IF EXISTS fail_transfer_leg_trg ON transactions`);
+      await prisma.$executeRawUnsafe(`DROP FUNCTION IF EXISTS fail_transfer_leg()`);
+      await prisma.$executeRawUnsafe(`
+        CREATE FUNCTION fail_transfer_leg() RETURNS trigger AS $$
+        BEGIN
+          IF NEW.account_id = ${dstId} AND NEW.type = 'transfer' THEN RAISE EXCEPTION 'forced second-leg failure'; END IF;
+          RETURN NEW;
+        END; $$ LANGUAGE plpgsql`);
+      await prisma.$executeRawUnsafe(
+        `CREATE TRIGGER fail_transfer_leg_trg BEFORE INSERT ON transactions FOR EACH ROW EXECUTE FUNCTION fail_transfer_leg()`,
+      );
+      try {
+        await expect(svc.createTransfer(ok(), userId)).rejects.toThrow();
+      } finally {
+        await prisma.$executeRawUnsafe(`DROP TRIGGER IF EXISTS fail_transfer_leg_trg ON transactions`);
+        await prisma.$executeRawUnsafe(`DROP FUNCTION IF EXISTS fail_transfer_leg()`);
+      }
+      expect(await transferRowCount()).toBe(0);
+      const after = await balances();
+      expect(after.get(srcId)!.toString()).toBe(before.get(srcId)!.toString());
+      expect(after.get(dstId)!.toString()).toBe(before.get(dstId)!.toString());
+    });
+
+    it('a fresh transfer can be voided, restored and edited as a pair via the Story 2 methods', async () => {
+      const res = await svc.createTransfer(ok(), userId);
+      const before = await balances();
+
+      await svc.void(res.source.id, { version: 0 }, userId);
+      const voided = await prisma.transaction.findMany({ where: { transferId: res.transfer_id } });
+      expect(voided.map((l) => l.lifecycle)).toEqual(['voided', 'voided']);
+
+      await svc.restore(res.destination.id, { version: 1 }, userId);
+      const restored = await prisma.transaction.findMany({ where: { transferId: res.transfer_id } });
+      expect(restored.map((l) => l.lifecycle)).toEqual(['actual', 'actual']);
+
+      await svc.update(res.source.id, { version: 2, amount: 80 }, userId);
+      const edited = await prisma.transaction.findMany({
+        where: { transferId: res.transfer_id },
+        orderBy: { id: 'asc' },
+      });
+      expect(edited.map((l) => l.amount.toString())).toEqual(['-80', '80']);
+      const after = await balances();
+      expect(total(after).toString()).toBe(total(before).toString());
+    });
+
+    describe('editing the date of a transfer pair', () => {
+      const makeDatedPair = async () => {
+        const dst2 = await mkAccount('Dst2', { referenceDate: fromDateOnlyString('2026-06-12') });
+        const res = await svc.createTransfer(
+          { sourceAccountId: srcId, destinationAccountId: dst2.id, amount: 50, occurredOn: '2026-06-14' },
+          userId,
+        );
+        return { res, dst2 };
+      };
+
+      it('rejects (400) a date inside one leg\'s opening snapshot, writes nothing, total unchanged', async () => {
+        const { res, dst2 } = await makeDatedPair();
+        const before = await balances();
+        const err = await svc.update(res.source.id, { version: 0, occurredOn: '2026-06-10' }, userId).catch((e) => e);
+        expect(err).toBeInstanceOf(BadRequestException);
+        expect(err.message).toContain('Dst2');
+        expect(err.message).toContain('2026-06-12');
+        const legs = await prisma.transaction.findMany({ where: { transferId: res.transfer_id } });
+        for (const leg of legs) {
+          expect(toDateOnlyString(leg.occurredOn)).toBe('2026-06-14');
+          expect(leg.version).toBe(0);
+        }
+        const after = await balances();
+        expect(total(after).toString()).toBe(total(before).toString());
+        expect(after.get(dst2.id)!.toString()).toBe(before.get(dst2.id)!.toString());
+      });
+
+      it('still edits the date of both legs when it stays outside both snapshots', async () => {
+        const { res } = await makeDatedPair();
+        await svc.update(res.destination.id, { version: 0, occurredOn: '2026-06-13' }, userId);
+        const legs = await prisma.transaction.findMany({ where: { transferId: res.transfer_id } });
+        expect(legs.map((l) => toDateOnlyString(l.occurredOn))).toEqual(['2026-06-13', '2026-06-13']);
+        expect(legs.map((l) => l.version)).toEqual([1, 1]);
+      });
+
+      it('impact-preview of the same edit returns the same 400', async () => {
+        const { res } = await makeDatedPair();
+        const err = await svc
+          .impactPreview(res.source.id, { action: 'edit', occurredOn: '2026-06-10' }, userId)
+          .catch((e) => e);
+        expect(err).toBeInstanceOf(BadRequestException);
+        expect(err.message).toContain('Dst2');
+      });
     });
   });
 });

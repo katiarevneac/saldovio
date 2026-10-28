@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { toDecimalString, toDateOnlyString, fromDateOnlyString } from '../common/serialization.js';
@@ -14,6 +15,7 @@ import { AccountsService } from '../accounts/accounts.service.js';
 import { CreateTransactionDto } from './dto/create-transaction.dto.js';
 import { UpdateVersionDto } from './dto/update-version.dto.js';
 import { UpdateTransactionDto } from './dto/update-transaction.dto.js';
+import { CreateTransferDto } from './dto/create-transfer.dto.js';
 import { parseRevolutCsv, type ParsedRow } from './csv/revolut-parser.js';
 import { csvEscape } from './csv/csv-escape.js';
 
@@ -201,6 +203,15 @@ export class TransactionsService {
           "occurredOn is in the future — an 'actual' transaction can't be dated after today. Use lifecycle: 'planned' instead.",
         );
       }
+      if (row.transferId) {
+        const legAccounts = await this.prisma.account.findMany({
+          where: {
+            userId,
+            transactions: { some: { transferId: row.transferId } },
+          },
+        });
+        this.assertTransferDateOutsideSnapshots(legAccounts, dto.occurredOn);
+      }
       common.occurredOn = occurredOn;
     }
     if (dto.category !== undefined) common.category = dto.category;
@@ -218,6 +229,105 @@ export class TransactionsService {
     return this.updateWithSibling(row, dto.version, ownData, siblingData, userId);
   }
 
+  // Decimal parsing + the <=2 decimal places rule, shared by edits and
+  // by createTransfer so the two can never diverge.
+  private parseAmount(rawAmount: number): Prisma.Decimal {
+    const amount = new Prisma.Decimal(rawAmount);
+    if (amount.decimalPlaces() > 2) {
+      throw new BadRequestException('amount must have at most 2 decimal places');
+    }
+    return amount;
+  }
+
+  private assertPositiveTransferMagnitude(amount: Prisma.Decimal): void {
+    if (!amount.isPositive() || amount.isZero()) {
+      throw new BadRequestException('A transfer amount must be a positive magnitude');
+    }
+  }
+
+  // A transfer leg dated inside its account's opening snapshot would not
+  // move that account's balance while the other leg still moves its
+  // own — silently changing the consolidated total (financial rule 1).
+  // Shared by createTransfer, update() and impactPreview() so the three
+  // can never disagree.
+  private assertTransferDateOutsideSnapshots(
+    accounts: { name: string; referenceDate: Date; openingBoundary: string }[],
+    occurredOn: string,
+  ): void {
+    for (const account of accounts) {
+      const referenceDate = toDateOnlyString(account.referenceDate);
+      if (
+        isBackdated(occurredOn, referenceDate, account.openingBoundary as 'legacy_inclusive' | 'start_of_day')
+      ) {
+        throw new BadRequestException(
+          `A transfer cannot be dated on or before the opening balance of account "${account.name}" (reference date ${referenceDate}); it would not move that account's balance.`,
+        );
+      }
+    }
+  }
+
+  // Atomic internal transfer (spec §4): two linked rows in ONE
+  // $transaction. Rejects (writes nothing) when either account is
+  // archived or the date is inside either account's opening snapshot —
+  // such a leg would not move its balance, silently changing the
+  // consolidated total (financial rule 1).
+  async createTransfer(dto: CreateTransferDto, userId: number) {
+    if (dto.sourceAccountId === dto.destinationAccountId) {
+      throw new BadRequestException('Source and destination accounts must be different');
+    }
+    // Ownership first, both accounts in one query scoped to the caller.
+    const owned = await this.prisma.account.findMany({
+      where: { id: { in: [dto.sourceAccountId, dto.destinationAccountId] }, userId },
+    });
+    if (owned.length !== 2) {
+      throw new ForbiddenException('Account does not belong to the current user');
+    }
+    const accounts = [
+      owned.find((a) => a.id === dto.sourceAccountId)!,
+      owned.find((a) => a.id === dto.destinationAccountId)!,
+    ];
+    for (const account of accounts) {
+      if (account.archived) {
+        throw new BadRequestException(`Account "${account.name}" is archived; transfers are not allowed`);
+      }
+    }
+
+    const magnitude = this.parseAmount(dto.amount);
+    this.assertPositiveTransferMagnitude(magnitude);
+
+    const occurredOn = fromDateOnlyString(dto.occurredOn);
+    if (occurredOn.getTime() > this.clock.today().getTime()) {
+      throw new BadRequestException(
+        "occurredOn is in the future — a transfer can't be dated after today.",
+      );
+    }
+    this.assertTransferDateOutsideSnapshots(accounts, dto.occurredOn);
+
+    const transferId = randomUUID();
+    const base = {
+      type: 'transfer',
+      occurredOn,
+      category: dto.category ?? null,
+      lifecycle: 'actual',
+      transferId,
+    };
+    const [source, destination] = await this.prisma.$transaction(async (tx) => {
+      const out = await tx.transaction.create({
+        data: { ...base, accountId: dto.sourceAccountId, amount: magnitude.negated() },
+      });
+      const into = await tx.transaction.create({
+        data: { ...base, accountId: dto.destinationAccountId, amount: magnitude },
+      });
+      return [out, into];
+    });
+
+    return {
+      transfer_id: transferId,
+      source: this.serialize(source),
+      destination: this.serialize(destination),
+    };
+  }
+
   // The amount rules of an edit, shared by update() and impactPreview()
   // so a preview can never accept (or reject) an amount the real edit
   // would not. `own` is the addressed row's new stored amount; `sibling`
@@ -226,16 +336,11 @@ export class TransactionsService {
     row: { type: string; amount: Prisma.Decimal },
     rawAmount: number,
   ): { own: Prisma.Decimal; sibling: Prisma.Decimal | null } {
-    const amount = new Prisma.Decimal(rawAmount);
-    if (amount.decimalPlaces() > 2) {
-      throw new BadRequestException('amount must have at most 2 decimal places');
-    }
+    const amount = this.parseAmount(rawAmount);
     if (row.type === 'transfer') {
       // Transfer legs: caller sends a positive magnitude; each leg
       // keeps its own sign (negative = outgoing leg).
-      if (!amount.isPositive() || amount.isZero()) {
-        throw new BadRequestException('A transfer amount must be a positive magnitude');
-      }
+      this.assertPositiveTransferMagnitude(amount);
       const ownNegative = row.amount.isNegative();
       return {
         own: ownNegative ? amount.negated() : amount,
@@ -326,6 +431,12 @@ export class TransactionsService {
           throw new BadRequestException(
             "occurredOn is in the future — an 'actual' transaction can't be dated after today. Use lifecycle: 'planned' instead.",
           );
+        }
+        if (row.transferId) {
+          const legAccounts = await this.prisma.account.findMany({
+            where: { userId, transactions: { some: { transferId: row.transferId } } },
+          });
+          this.assertTransferDateOutsideSnapshots(legAccounts, query.occurredOn);
         }
         proposedOwn.occurredOn = query.occurredOn;
         if (proposedSibling) proposedSibling.occurredOn = query.occurredOn;
