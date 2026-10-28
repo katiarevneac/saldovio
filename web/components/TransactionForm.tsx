@@ -46,6 +46,7 @@ export default function TransactionForm({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isTransfer && transferBlocked) return;
     setError("");
     setSubmitting(true);
 

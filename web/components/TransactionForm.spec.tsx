@@ -99,6 +99,15 @@ describe("TransactionForm", () => {
       expect(screen.getByRole("button", { name: /add transaction/i })).toBeDisabled();
     });
 
+    it("does not call createTransferAction when the form is submitted directly while backdated", () => {
+      render(<TransactionForm accounts={two} />);
+      selectTransfer();
+      fireEvent.change(screen.getByLabelText("Amount"), { target: { value: "5" } });
+      fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2026-09-10" } });
+      fireEvent.submit(screen.getByRole("button", { name: /add transaction/i }).closest("form")!);
+      expect(createTransferAction).not.toHaveBeenCalled();
+    });
+
     it("calls createTransferAction with positive numeric payload, not createTransactionAction", async () => {
       const onSuccess = vi.fn();
       vi.mocked(createTransferAction).mockResolvedValue(undefined);
