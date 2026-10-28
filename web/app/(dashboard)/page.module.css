@@ -84,6 +84,10 @@
   font-weight: 700;
 }
 
+.transferAmount {
+  color: var(--color-text-secondary);
+}
+
 .forecastHeadline {
   font-weight: 800;
   font-size: 26px;

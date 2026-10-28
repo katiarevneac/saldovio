@@ -157,4 +157,16 @@ describe("TransactionForm", () => {
     );
     expect(createTransferAction).not.toHaveBeenCalled();
   });
+
+  it("ignores a second submit while the first is still in flight", async () => {
+    vi.mocked(createTransactionAction).mockClear();
+    vi.mocked(createTransactionAction).mockReturnValue(new Promise(() => {}));
+    render(<TransactionForm accounts={accounts} />);
+    fireEvent.change(screen.getByLabelText("Amount"), { target: { value: "12" } });
+    fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2026-10-01" } });
+    const form = screen.getByRole("button", { name: /add transaction/i }).closest("form")!;
+    fireEvent.submit(form);
+    fireEvent.submit(form);
+    expect(createTransactionAction).toHaveBeenCalledTimes(1);
+  });
 });

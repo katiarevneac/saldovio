@@ -107,6 +107,10 @@
   color: var(--color-accent);
 }
 
+.transfer {
+  color: var(--color-text-secondary);
+}
+
 .expense {
   color: var(--color-expense-tint-icon);
 }

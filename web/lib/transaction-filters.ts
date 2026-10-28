@@ -7,11 +7,21 @@ import type { Transaction } from "./transactions";
 export function transactionLabel(
   transaction: Pick<Transaction, "category" | "type">
 ): string {
+  if (transaction.type === "transfer") {
+    return transaction.category ? `Transfer · ${transaction.category}` : "Transfer";
+  }
   return transaction.category ?? transaction.type;
 }
 
+// Category chips: every transfer row collapses into ONE "Transfer" chip
+// (a transfer's category is a note, not an expense category, and must
+// not pollute the expense category chips); other rows use their label.
+function chipLabel(transaction: Pick<Transaction, "category" | "type">): string {
+  return transaction.type === "transfer" ? "Transfer" : transactionLabel(transaction);
+}
+
 export function extractCategoryLabels(transactions: Transaction[]): string[] {
-  const labels = new Set(transactions.map(transactionLabel));
+  const labels = new Set(transactions.map(chipLabel));
   return [...labels].sort((a, b) => a.localeCompare(b));
 }
 
@@ -27,7 +37,7 @@ export function filterTransactions(
   const query = search.trim().toLowerCase();
   return transactions.filter((transaction) => {
     const label = transactionLabel(transaction);
-    if (categoryLabel && label !== categoryLabel) return false;
+    if (categoryLabel && chipLabel(transaction) !== categoryLabel) return false;
     if (query && !label.toLowerCase().includes(query)) return false;
     return true;
   });

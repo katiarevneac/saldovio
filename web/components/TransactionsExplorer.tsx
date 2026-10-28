@@ -35,7 +35,8 @@ export default function TransactionsExplorer({
   const sorted = sortTransactionsDesc(transactions);
   const filtered = filterTransactions(sorted, { search, categoryLabel });
 
-  function amountClass(bani: number) {
+  function amountClass(transaction: Transaction, bani: number) {
+    if (transaction.type === "transfer") return styles.transfer;
     return bani < 0 ? styles.expense : styles.income;
   }
 
@@ -48,7 +49,7 @@ export default function TransactionsExplorer({
           <span className={styles.pill}>{transactionLabel(transaction)}</span>
         </td>
         <td>{accountNameById[transaction.account_id] ?? "—"}</td>
-        <td className={`${styles.amount} ${amountClass(bani)}`}>{formatAmount(bani)}</td>
+        <td className={`${styles.amount} ${amountClass(transaction, bani)}`}>{formatAmount(bani)}</td>
       </tr>
     );
   }
@@ -118,7 +119,7 @@ export default function TransactionsExplorer({
                     <li key={transaction.id} className={styles.dayRow}>
                       <span className={styles.pill}>{transactionLabel(transaction)}</span>
                       <span>{accountNameById[transaction.account_id] ?? "—"}</span>
-                      <span className={`${styles.amount} ${amountClass(bani)}`}>
+                      <span className={`${styles.amount} ${amountClass(transaction, bani)}`}>
                         {formatAmount(bani)}
                       </span>
                     </li>

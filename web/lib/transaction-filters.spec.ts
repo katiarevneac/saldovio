@@ -28,6 +28,14 @@ describe("transactionLabel", () => {
   it("falls back to type when category is null", () => {
     expect(transactionLabel(tx({ category: null, type: "income" }))).toBe("income");
   });
+
+  it("prefixes a transfer's category with 'Transfer · '", () => {
+    expect(transactionLabel(tx({ category: "Savings", type: "transfer" }))).toBe("Transfer · Savings");
+  });
+
+  it("labels a category-less transfer plainly 'Transfer'", () => {
+    expect(transactionLabel(tx({ category: null, type: "transfer" }))).toBe("Transfer");
+  });
 });
 
 describe("extractCategoryLabels", () => {
@@ -43,6 +51,28 @@ describe("extractCategoryLabels", () => {
 
   it("returns an empty array for no transactions", () => {
     expect(extractCategoryLabels([])).toEqual([]);
+  });
+});
+
+describe("transfer category chips", () => {
+  const rows = [
+    tx({ id: 1, category: "Groceries" }),
+    tx({ id: 2, category: "Savings", type: "transfer", amount: "-50.00" }),
+    tx({ id: 3, category: null, type: "transfer", amount: "50.00" }),
+  ];
+
+  it("collapses all transfer rows into a single 'Transfer' chip", () => {
+    expect(extractCategoryLabels(rows)).toEqual(["Groceries", "Transfer"]);
+  });
+
+  it("filtering by the Transfer chip returns every transfer row, whatever its category", () => {
+    const result = filterTransactions(rows, { search: "", categoryLabel: "Transfer" });
+    expect(result.map((t) => t.id)).toEqual([2, 3]);
+  });
+
+  it("search still matches a transfer's category text", () => {
+    const result = filterTransactions(rows, { search: "saving", categoryLabel: null });
+    expect(result.map((t) => t.id)).toEqual([2]);
   });
 });
 
